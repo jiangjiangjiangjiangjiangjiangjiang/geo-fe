@@ -154,6 +154,11 @@ function MainNavbarContainer({
     setModal("MODAL_NEW_COLLECTION");
   }, []);
 
+  const onCreateGeoTask = useCallback(() => {
+    onChangeLocation("/geo-task?create=true");
+    closeNavbar();
+  }, [onChangeLocation, closeNavbar]);
+
   const closeModal = useCallback(() => setModal(null), []);
 
   const renderModalContent = useCallback(() => {
@@ -193,6 +198,7 @@ function MainNavbarContainer({
         hasDataAccess={hasDataAccess}
         reorderBookmarks={reorderBookmarks}
         handleCreateNewCollection={onCreateNewCollection}
+        handleCreateGeoTask={onCreateGeoTask}
         handleCloseNavbar={closeNavbar}
         handleLogout={logout}
       />

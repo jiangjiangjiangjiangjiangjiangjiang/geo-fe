@@ -16,12 +16,12 @@ import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import type { CollectionTreeItem } from "metabase/entities/collections";
-import {
-  getCanAccessOnboardingPage,
-  getIsNewInstance,
-} from "metabase/home/selectors";
+// import {
+//   getCanAccessOnboardingPage,
+//   getIsNewInstance,
+// } from "metabase/home/selectors";
 import { isSmallScreen } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
+// import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import { PLUGIN_DATA_STUDIO, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
@@ -45,6 +45,7 @@ import type { SelectedItem } from "../types";
 import { AddDataModal } from "./AddDataModal";
 import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
+import { GeoTaskNavSection } from "./GeoTaskNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
 
 type Props = {
@@ -57,6 +58,7 @@ type Props = {
   handleCloseNavbar: () => void;
   handleLogout: () => void;
   handleCreateNewCollection: () => void;
+  handleCreateGeoTask: () => void;
   reorderBookmarks: ({
     newIndex,
     oldIndex,
@@ -75,6 +77,7 @@ export function MainNavbarView({
   hasDataAccess,
   reorderBookmarks,
   handleCreateNewCollection,
+  handleCreateGeoTask,
   handleCloseNavbar,
 }: Props) {
   const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
@@ -162,8 +165,8 @@ export function MainNavbarView({
     };
   }, [collections, showSyncGroup]);
 
-  const isNewInstance = useSelector(getIsNewInstance);
-  const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
+  // const isNewInstance = useSelector(getIsNewInstance);
+  // const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
   const shouldDisplayGettingStarted = false; // Hidden: isNewInstance && canAccessOnboarding;
 
   const activeUsersCount = useSetting("active-users-count");
@@ -283,6 +286,16 @@ export function MainNavbarView({
                   </PaddedSidebarLink>
                 )}
               </CollapseSection>
+            </ErrorBoundary>
+          </SidebarSection>
+
+          <SidebarSection>
+            <ErrorBoundary>
+              <GeoTaskNavSection
+                nonEntityItem={nonEntityItem}
+                onItemSelect={onItemSelect}
+                onCreateGeoTask={handleCreateGeoTask}
+              />
             </ErrorBoundary>
           </SidebarSection>
 

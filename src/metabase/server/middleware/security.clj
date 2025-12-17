@@ -177,7 +177,9 @@
                                    (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))
                                  ;; CLJS REPL
                                  (when config/is-dev?
-                                   "ws://*:9630")]
+                                   "ws://*:9630")
+                                 ;; Allow connections to localhost:8000 for geo-task API
+                                 "http://localhost:8000"]
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})

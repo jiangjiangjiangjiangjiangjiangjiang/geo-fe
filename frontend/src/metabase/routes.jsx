@@ -30,6 +30,7 @@ import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/Ar
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
+import { GeoTaskPage } from "metabase/geo-task/GeoTaskPage";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
@@ -153,6 +154,8 @@ export const getRoutes = (store) => {
           {/* Send historical /archive route to trash - can remove in v52 */}
           <Redirect from="archive" to="trash" replace />
           <Route path="trash" component={TrashCollectionLanding} />
+
+          <Route path="geo-task" component={GeoTaskPage} />
 
           {PLUGIN_DOCUMENTS.getRoutes()}
 

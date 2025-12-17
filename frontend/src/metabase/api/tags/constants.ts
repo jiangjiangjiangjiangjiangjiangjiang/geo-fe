@@ -18,6 +18,7 @@ export const TAG_TYPES = [
   "embedding-hub-checklist",
   "field",
   "field-values",
+  "geo-task",
   "glossary",
   "indexed-entity",
   "logger-preset",

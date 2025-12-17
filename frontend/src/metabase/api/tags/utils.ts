@@ -598,6 +598,21 @@ export function provideTaskTags(task: Task): TagDescription<TagType>[] {
   return [idTag("task", task.id)];
 }
 
+export function provideGeoTaskListTags(
+  tasks: Array<{ id: string | number }> | undefined,
+): TagDescription<TagType>[] {
+  if (!tasks || !Array.isArray(tasks)) {
+    return [listTag("geo-task")];
+  }
+  return [listTag("geo-task"), ...tasks.flatMap(provideGeoTaskTags)];
+}
+
+export function provideGeoTaskTags(task: {
+  id: string | number;
+}): TagDescription<TagType>[] {
+  return [idTag("geo-task", task.id)];
+}
+
 export function provideTimelineEventListTags(
   events: TimelineEvent[],
 ): TagDescription<TagType>[] {

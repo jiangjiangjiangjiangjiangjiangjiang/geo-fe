@@ -667,25 +667,44 @@
    request      :- ::request]
   (let [request-method (:request-method request)
         handlers       (get handler-map request-method)
-        path           (:compojure/path request)
+        ;; Use :path-info if already set (from route-map-handler), otherwise use :compojure/path
+        path           (or (:path-info request) (:compojure/path request))
+        ;; clout/route-matches checks :path-info first, then :uri
         request        (cond-> request
-                         path (assoc :path-info path))]
+                         path (-> (assoc :path-info path)
+                                  (assoc :uri path)))]
+    (log/debugf "[FIND-HANDLER] method=%s, path=%s, path-info=%s, compojure/path=%s, handlers-count=%s"
+                request-method path (:path-info request) (:compojure/path request) (count handlers))
     ;; TODO -- we could probably make this a little faster by unrolling this loop
-    (some (fn [[route handler]]
-            (when-let [route-params (clout/route-matches route request)]
-              [(assoc request :route-params (decode-route-params route-params))
-               handler]))
-          handlers)))
+    (let [result (some (fn [[route handler]]
+                         (let [matches? (clout/route-matches route request)]
+                           (log/debugf "[FIND-HANDLER] Trying route: %s, matches: %s" (str route) (some? matches?))
+                           (when matches?
+                             (log/infof "[FIND-HANDLER] ✅ Matched route: %s with params: %s" (str route) matches?)
+                             [(assoc request :route-params (decode-route-params matches?))
+                              handler])))
+                       handlers)]
+      (when (nil? result)
+        (log/warnf "[FIND-HANDLER] ❌ No matching handler found for method=%s, path=%s" request-method path))
+      result)))
 
 (mu/defn- build-ns-handler :- ::handler
   "Build a combined Ring handler for all `endpoints` that routes requests to the matching handler (if any)."
   [endpoints :- ::ns-endpoints]
-  (let [handler-map (ns-handler-map endpoints)]
+  (let [handler-map (ns-handler-map endpoints)
+        endpoint-count (count endpoints)]
+    (log/debugf "[NS-HANDLER] Building handler with %s endpoints" endpoint-count)
     (open-api/handler-with-open-api-spec
      (fn ns-handler* [request respond raise]
+       (log/debugf "[NS-HANDLER] Request received: method=%s, path-info=%s, uri=%s"
+                   (:request-method request) (:path-info request) (:uri request))
        (if-let [[request* handler] (find-matching-handler handler-map request)]
-         (handler request* respond raise)
-         (respond nil)))
+         (do
+           (log/info "[NS-HANDLER] ✅ Found matching handler, calling it")
+           (handler request* respond raise))
+         (do
+           (log/warn "[NS-HANDLER] ❌ No matching handler found, returning nil")
+           (respond nil))))
      (fn [prefix]
        (metabase.api.macros.defendpoint.open-api/open-api-spec endpoints prefix)))))
 
