@@ -114,14 +114,9 @@
    :mb-db-port 3306})
 
 (defmethod env-defaults :postgres
-  "Default PostgreSQL connection settings. These can be overridden by environment variables.
-   To customize, set MB_DB_HOST, MB_DB_PORT, MB_DB_DBNAME, MB_DB_USER, MB_DB_PASS environment variables."
   [_db-type]
-  {:mb-db-host "pgm-bp179r7uizvlo0m2.pg.rds.aliyuncs.com"
-   :mb-db-port 5432
-   :mb-db-dbname "geo"
-   :mb-db-user "postgres"
-   :mb-db-pass "+3!Fhp4web7s2w7"})
+  {:mb-db-host "localhost"
+   :mb-db-port 5432})
 
 (defn- env* [db-type]
   (merge-with

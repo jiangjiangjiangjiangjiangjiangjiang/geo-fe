@@ -178,11 +178,8 @@
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "ws://*:9630")
-                                 ;; Allow connections to localhost:8000 for geo-task API (dev)
-                                 "http://localhost:8000"
-                                 ;; Allow connections to geo-api.streamcross-dashboard.com for geo-task API (production)
-                                 "https://geo-api.streamcross-dashboard.com:8000"
-                                 "https://geo-api.streamcross-dashboard.com"]
+                                 ;; Allow connections to localhost:8000 for geo-task API
+                                 "http://localhost:8000"]
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
