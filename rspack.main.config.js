@@ -334,7 +334,7 @@ const config = {
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
       ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
-      GEO_TASK_API_URL: undefined, // Will use process.env.GEO_TASK_API_URL if set, otherwise undefined
+      GEO_TASK_API_URL: process.env.GEO_TASK_API_URL || "http://geo-api.streamcross-dashboard.com:8000",
     }),
   ],
 };
