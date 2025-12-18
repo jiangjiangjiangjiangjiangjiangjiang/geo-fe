@@ -43,9 +43,9 @@ export const CreateGeoTaskForm = ({
   const initialValues = useMemo(
     () => ({
       query_text: "",
-      platform_name: "",
-      usr_company_name: "",
-      brand_keywords: "",
+      platform_name: undefined,
+      usr_company_name: undefined,
+      brand_keywords: undefined,
       enabled: true,
       schedule_cron: "",
     }),
@@ -75,7 +75,7 @@ export const CreateGeoTaskForm = ({
           required
           autoFocus
         />
-        <FormInput
+        {/* <FormInput
           name="platform_name"
           title={t`Platform Name`}
           placeholder={t`Enter platform name (optional)`}
@@ -86,19 +86,19 @@ export const CreateGeoTaskForm = ({
           title={t`User Company Name`}
           placeholder={t`Enter user company name (optional)`}
           nullable
-        />
+        /> */}
         <FormTextArea
           name="brand_keywords"
           title={t`Brand Keywords`}
           placeholder={t`Enter brand keywords (optional)`}
           nullable
         />
-        <FormInput
+        {/* <FormInput
           name="schedule_cron"
           title={t`Schedule Cron`}
           placeholder={t`Enter cron expression (optional)`}
           nullable
-        />
+        /> */}
         <FormCheckbox
           name="enabled"
           title={t`Enabled`}

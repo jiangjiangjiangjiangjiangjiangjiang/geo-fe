@@ -153,13 +153,22 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/execute"
+(api.macros/defendpoint :post "/execute"
   "Execute a geo task by ID."
-  [{:keys [id]} :- [:map [:id ms/UUIDString]]]
+  [_route-params
+   _query-params
+   {:as body}
+   :- [:map
+       [:geo_task_id ms/UUIDString]]]
   (api/check-superuser)
-  (let [task-uuid (java.util.UUID/fromString id)]
+  (let [task-id (:geo_task_id body)
+        task-uuid (java.util.UUID/fromString task-id)]
     (api/let-404 [_task (first (query-geo-database "SELECT * FROM geo_tasks WHERE id = ?" task-uuid))]
       ;; TODO: Implement actual execution logic here
       ;; For now, just update the last_run_at timestamp
       (execute-geo-database "UPDATE geo_tasks SET last_run_at = ? WHERE id = ?" (java.time.Instant/now) task-uuid)
-      {:status "executed" :task-id id})))
+      {:success true
+       :inserted 0
+       :task_count 0
+       :task_ids []
+       :message "Task executed successfully"})))

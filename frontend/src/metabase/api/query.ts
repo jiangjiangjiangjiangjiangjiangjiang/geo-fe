@@ -29,7 +29,9 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
     url === "/api/geo-task/list" ||
     url?.startsWith("/api/geo-task/list") ||
     url === "/api/geo-task/add" ||
-    url?.startsWith("/api/geo-task/add");
+    url?.startsWith("/api/geo-task/add") ||
+    url === "/api/geo-task/execute" ||
+    url?.startsWith("/api/geo-task/execute");
 
   if (isGeoTaskEndpoint) {
     // Handle /api/geo-task/list with query params
@@ -48,6 +50,12 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
     ) {
       // Handle /api/geo-task/add
       url = `${GEO_TASK_API_BASE_URL}/api/geo-task/add`;
+    } else if (
+      url === "/api/geo-task/execute" ||
+      url?.startsWith("/api/geo-task/execute")
+    ) {
+      // Handle /api/geo-task/execute
+      url = `${GEO_TASK_API_BASE_URL}/api/geo-task/execute`;
     }
 
     // Use native fetch for full URL to avoid basename issues

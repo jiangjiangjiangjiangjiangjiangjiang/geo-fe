@@ -32,10 +32,10 @@ export const GeoTaskList = ({
   const handleExecute = async (task: GeoTask) => {
     try {
       setExecutingId(task.id);
-      await executeGeoTask({ id: task.id }).unwrap();
-      // TODO: Add success notification
+      const _result = await executeGeoTask({ geo_task_id: task.id }).unwrap();
+      // TODO: Add success notification with _result.message
+      // Result contains: success, inserted, task_count, task_ids, message
     } catch (error) {
-      console.error("Failed to execute geo task:", error);
       // TODO: Add error notification
     } finally {
       setExecutingId(null);
@@ -53,30 +53,20 @@ export const GeoTaskList = ({
           <table className={AdminS.ContentTable}>
             <thead>
               <tr>
+                <th>{t`Task ID`}</th>
                 <th>{t`Query Text`}</th>
-                <th>{t`Platform ID`}</th>
-                <th>{t`Company ID`}</th>
                 <th>{t`Brand Keywords`}</th>
                 <th>{t`Enabled`}</th>
-                <th>{t`Schedule Cron`}</th>
-                <th>{t`Last Run`}</th>
                 <th>{t`Actions`}</th>
               </tr>
             </thead>
             <tbody>
               {tasks.map((task) => (
                 <tr key={task.id}>
+                  <td>{task.id}</td>
                   <td>{task.query_text}</td>
-                  <td>{task.platform_id || "-"}</td>
-                  <td>{task.usr_company_id || "-"}</td>
                   <td>{task.brand_keywords || "-"}</td>
                   <td>{task.enabled ? t`Yes` : t`No`}</td>
-                  <td>{task.schedule_cron || "-"}</td>
-                  <td>
-                    {task.last_run_at
-                      ? new Date(task.last_run_at).toLocaleString()
-                      : "-"}
-                  </td>
                   <td>
                     <Button
                       size="sm"

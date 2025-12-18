@@ -42,7 +42,15 @@ export interface ListGeoTasksResponse {
 }
 
 export interface ExecuteGeoTaskRequest {
-  id: string;
+  geo_task_id: string;
+}
+
+export interface ExecuteGeoTaskResponse {
+  success: boolean;
+  inserted: number;
+  task_count: number;
+  task_ids: string[];
+  message: string;
 }
 
 export const geoTaskApi = Api.injectEndpoints({
@@ -66,10 +74,14 @@ export const geoTaskApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_result, error) => (error ? [] : [listTag("geo-task")]),
     }),
-    executeGeoTask: builder.mutation<void, ExecuteGeoTaskRequest>({
-      query: ({ id }: ExecuteGeoTaskRequest) => ({
+    executeGeoTask: builder.mutation<
+      ExecuteGeoTaskResponse,
+      ExecuteGeoTaskRequest
+    >({
+      query: (body: ExecuteGeoTaskRequest) => ({
         method: "POST",
-        url: `/api/geo-task/${id}/execute`,
+        url: "/api/geo-task/execute",
+        body,
       }),
     }),
   }),
