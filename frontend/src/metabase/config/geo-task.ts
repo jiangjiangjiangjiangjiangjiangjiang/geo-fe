@@ -9,4 +9,4 @@
  */
 export const GEO_TASK_API_BASE_URL =
   process.env.GEO_TASK_API_URL ||
-  "https://geo-api.streamcross-dashboard.com:8000";
+  "http://geo-api.streamcross-dashboard.com:8000";
