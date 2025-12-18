@@ -8,4 +8,5 @@
  * environment variables by checking `process.env.GEO_TASK_API_URL` if needed.
  */
 export const GEO_TASK_API_BASE_URL =
-  process.env.GEO_TASK_API_URL || "http://localhost:8000";
+  process.env.GEO_TASK_API_URL ||
+  "https://geo-api.streamcross-dashboard.com:8000";

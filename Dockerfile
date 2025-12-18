@@ -26,7 +26,12 @@ RUN git config --global --add safe.directory /home/node
 # install frontend dependencies
 RUN yarn --frozen-lockfile
 
-RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION}
+# If VERSION is not provided, use git to get the latest tag or generate a snapshot version
+RUN if [ -z "$VERSION" ]; then \
+      VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0-SNAPSHOT"); \
+    fi && \
+#    INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION}
+    INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version "\"${VERSION}\""
 
 # ###################
 # # STAGE 2: runner
