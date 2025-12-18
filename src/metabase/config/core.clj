@@ -46,7 +46,8 @@
   "Global application defaults"
   {:mb-run-mode                     "prod"
    ;; DB Settings
-   :mb-db-type                      "h2"
+   ;; Default to PostgreSQL for production. Set MB_DB_TYPE environment variable to override.
+   :mb-db-type                      "postgres"
    :mb-db-file                      "metabase.db"
    :mb-db-automigrate               "true"
    :mb-db-logging                   "true"
