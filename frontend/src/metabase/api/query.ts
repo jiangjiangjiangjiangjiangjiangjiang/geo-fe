@@ -75,6 +75,8 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
         method,
         headers,
         signal: ctx.signal,
+        mode: "cors", // Explicitly enable CORS for cross-origin requests
+        credentials: "omit", // Don't send cookies for cross-origin requests
         body:
           method !== "GET" && args?.body
             ? JSON.stringify(args.body)
