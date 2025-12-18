@@ -181,7 +181,9 @@
                                  ;; Allow connections to localhost:8000 for geo-task API
                                  "http://localhost:8000"
                                  "https://geo-api.streamcross-dashboard.com:8000"
-                                 "https://geo-api.streamcross-dashboard.com"]
+                                 "https://geo-api.streamcross-dashboard.com"
+                                 "http://geo-api.streamcross-dashboard.com:8000"
+                                 "http://geo-api.streamcross-dashboard.com"]
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
