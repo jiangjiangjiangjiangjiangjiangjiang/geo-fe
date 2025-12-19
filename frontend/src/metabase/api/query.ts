@@ -61,9 +61,14 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
     // Use native fetch for full URL to avoid basename issues
     try {
       const headers: HeadersInit = {
-        "Content-Type": "application/json",
         Accept: "application/json",
       };
+
+      // Only add Content-Type for non-GET requests to avoid unnecessary preflight
+      // GET requests should not have Content-Type header to avoid CORS preflight
+      if (method !== "GET") {
+        headers["Content-Type"] = "application/json";
+      }
 
       // Add session token if available
       if (api.sessionToken) {
@@ -71,24 +76,81 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
         headers["X-Metabase-Session"] = api.sessionToken;
       }
 
-      const response = await globalThis.fetch(url, {
+      const fetchOptions = {
         method,
         headers,
         signal: ctx.signal,
-        mode: "cors", // Explicitly enable CORS for cross-origin requests
-        credentials: "omit", // Don't send cookies for cross-origin requests
+        mode: "cors" as RequestMode, // Explicitly enable CORS for cross-origin requests
+        credentials: "omit" as RequestCredentials, // Don't send cookies for cross-origin requests
         body:
           method !== "GET" && args?.body
             ? JSON.stringify(args.body)
             : undefined,
+      };
+
+      let response: Response;
+      try {
+        response = await globalThis.fetch(url, fetchOptions);
+      } catch (fetchError) {
+        // Catch network errors (including CORS errors)
+        console.error("[Geo Task API] Fetch network error:", {
+          url,
+          method,
+          error:
+            fetchError instanceof Error
+              ? {
+                  name: fetchError.name,
+                  message: fetchError.message,
+                  stack: fetchError.stack,
+                }
+              : fetchError,
+        });
+        throw fetchError;
+      }
+
+      // Extract response headers for error handling
+      const responseHeaders: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
       });
 
       if (!response.ok) {
         const errorData = await response.text().catch(() => "");
+        console.error("[Geo Task API] Error response:", {
+          status: response.status,
+          statusText: response.statusText,
+          data: errorData,
+          headers: responseHeaders,
+          corsHeaders: {
+            "access-control-allow-origin":
+              responseHeaders["access-control-allow-origin"],
+            "access-control-allow-methods":
+              responseHeaders["access-control-allow-methods"],
+            "access-control-allow-headers":
+              responseHeaders["access-control-allow-headers"],
+          },
+          requestHeaders: headers,
+          hasSessionToken: !!api.sessionToken,
+        });
+
+        // If 403 and no CORS headers, it's likely a CORS issue
+        if (
+          response.status === 403 &&
+          !responseHeaders["access-control-allow-origin"]
+        ) {
+          console.error(
+            "[Geo Task API] 403 Forbidden - Possible CORS issue: Missing Access-Control-Allow-Origin header",
+          );
+        }
+
         return {
           error: {
             status: response.status,
             data: errorData,
+            message:
+              response.status === 403
+                ? "Forbidden: Check if backend has CORS configured and authentication is correct"
+                : `Request failed with status ${response.status}`,
           },
         };
       }
@@ -97,6 +159,18 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
       // Response format is already correct
       return { data };
     } catch (error) {
+      console.error("[Geo Task API] Fetch error:", {
+        url,
+        method,
+        error:
+          error instanceof Error
+            ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
+            : error,
+      });
       return { error };
     }
   }
