@@ -11,6 +11,7 @@ import {
   NotFound,
   Unauthorized,
 } from "metabase/common/components/ErrorPages";
+import { ICPFooter } from "metabase/common/components/ICPFooter/ICPFooter";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
@@ -131,6 +132,7 @@ function App({
               <NewModals />
               <PLUGIN_METABOT.Metabot hide={isAdminApp || isDataStudioApp} />
             </AppContentContainer>
+            <ICPFooter />
           </AppContainer>
           <Palette />
         </KBarProvider>
