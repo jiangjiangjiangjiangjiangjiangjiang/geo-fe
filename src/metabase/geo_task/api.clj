@@ -100,7 +100,8 @@
        [:usr_company_name {:optional true} [:maybe :string]]
        [:brand_keywords {:optional true} [:maybe :string]]
        [:schedule_cron {:optional true} [:maybe :string]]
-       [:enabled {:optional true} [:maybe :boolean]]]]
+       [:enabled {:optional true} [:maybe :boolean]]
+       [:category {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (let [task-id (java.util.UUID/randomUUID)
         now (java.time.Instant/now)
@@ -119,12 +120,13 @@
         ;; Normalize body: convert empty strings to nil
         normalized-body (-> body
                             (update :brand_keywords #(if (and (string? %) (empty? %)) nil %))
-                            (update :schedule_cron #(if (and (string? %) (empty? %)) nil %)))
+                            (update :schedule_cron #(if (and (string? %) (empty? %)) nil %))
+                            (update :category #(if (and (string? %) (empty? %)) nil %)))
         ;; Look up IDs from names
         platform-id (find-platform-id (:platform_name normalized-body))
         usr-company-id (find-usr-company-id (:usr_company_name normalized-body))
         task-data (-> normalized-body
-                      (select-keys [:query_text :brand_keywords :schedule_cron :enabled])
+                      (select-keys [:query_text :brand_keywords :schedule_cron :enabled :category])
                       (assoc :id task-id
                              :platform_id platform-id
                              :platform_name (:platform_name normalized-body)
@@ -133,7 +135,7 @@
                              :created_at now
                              :updated_at now)
                       (update :enabled #(if (nil? %) true %)))
-        sql "INSERT INTO geo_tasks (id, platform_id, usr_company_id, query_text, brand_keywords, enabled, schedule_cron, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *"
+        sql "INSERT INTO geo_tasks (id, platform_id, usr_company_id, query_text, brand_keywords, enabled, schedule_cron, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *"
         params [(:id task-data)
                 (:platform_id task-data)
                 (:usr_company_id task-data)
@@ -141,6 +143,7 @@
                 (:brand_keywords task-data)
                 (:enabled task-data)
                 (:schedule_cron task-data)
+                (:category task-data)
                 (:created_at task-data)
                 (:updated_at task-data)]
         inserted-task (first (apply query-geo-database sql params))]

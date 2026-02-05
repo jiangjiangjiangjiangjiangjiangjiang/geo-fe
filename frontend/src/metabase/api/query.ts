@@ -24,14 +24,16 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
     return { error: "Invalid HTTP method" };
   }
 
-  // Special handling for /api/geo-task endpoints - use port 8000
+  // Special handling for /api/geo-task endpoints and /api/categories - use port 8000
   const isGeoTaskEndpoint =
     url === "/api/geo-task/list" ||
     url?.startsWith("/api/geo-task/list") ||
     url === "/api/geo-task/add" ||
     url?.startsWith("/api/geo-task/add") ||
     url === "/api/geo-task/execute" ||
-    url?.startsWith("/api/geo-task/execute");
+    url?.startsWith("/api/geo-task/execute") ||
+    url === "/api/categories" ||
+    url?.startsWith("/api/categories");
 
   if (isGeoTaskEndpoint) {
     // Handle /api/geo-task/list with query params
@@ -56,6 +58,12 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
     ) {
       // Handle /api/geo-task/execute
       url = `${GEO_TASK_API_BASE_URL}/api/geo-task/execute`;
+    } else if (
+      url === "/api/categories" ||
+      url?.startsWith("/api/categories")
+    ) {
+      // Handle /api/categories
+      url = `${GEO_TASK_API_BASE_URL}/api/categories`;
     }
 
     // Use native fetch for full URL to avoid basename issues

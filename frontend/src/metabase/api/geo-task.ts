@@ -11,6 +11,7 @@ export interface GeoTask {
   brand_keywords?: string;
   enabled?: boolean;
   schedule_cron?: string;
+  category?: string;
   last_run_at?: string;
   created_at?: string;
   updated_at?: string;
@@ -23,6 +24,7 @@ export interface CreateGeoTaskRequest {
   brand_keywords?: string;
   schedule_cron?: string;
   enabled?: boolean;
+  category?: string;
 }
 
 export interface ListGeoTasksRequest {
@@ -51,6 +53,18 @@ export interface ExecuteGeoTaskResponse {
   task_count: number;
   task_ids: string[];
   message: string;
+}
+
+export interface Category {
+  name: string;
+  description: string;
+  competitors: string[];
+}
+
+export interface GetCategoriesResponse {
+  success: boolean;
+  categories: Category[];
+  total: number;
 }
 
 export const geoTaskApi = Api.injectEndpoints({
@@ -84,6 +98,12 @@ export const geoTaskApi = Api.injectEndpoints({
         body,
       }),
     }),
+    getCategories: builder.query<GetCategoriesResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/categories",
+      }),
+    }),
   }),
 });
 
@@ -91,4 +111,5 @@ export const {
   useListGeoTasksQuery,
   useCreateGeoTaskMutation,
   useExecuteGeoTaskMutation,
+  useGetCategoriesQuery,
 } = geoTaskApi;

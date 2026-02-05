@@ -3,12 +3,20 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import type { CreateGeoTaskRequest } from "metabase/api/geo-task";
-import { useCreateGeoTaskMutation } from "metabase/api/geo-task";
+import {
+  useCreateGeoTaskMutation,
+  useGetCategoriesQuery,
+} from "metabase/api/geo-task";
 import FormErrorMessage from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import FormInput from "metabase/common/components/FormInput";
 import FormTextArea from "metabase/common/components/FormTextArea";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormProvider,
+  FormSelect,
+  FormSubmitButton,
+} from "metabase/forms";
 import { FormCheckbox } from "metabase/forms/components/FormCheckbox";
 import { Button } from "metabase/ui";
 
@@ -22,6 +30,18 @@ export const CreateGeoTaskForm = ({
   onCancel,
 }: CreateGeoTaskFormProps) => {
   const [createGeoTask, { isLoading }] = useCreateGeoTaskMutation();
+  const { data: categoriesData, isLoading: isLoadingCategories } =
+    useGetCategoriesQuery();
+
+  const categoryOptions = useMemo(() => {
+    if (!categoriesData?.categories) {
+      return [];
+    }
+    return categoriesData.categories.map((category) => ({
+      value: category.name,
+      label: category.name,
+    }));
+  }, [categoriesData]);
 
   const geoTaskSchema = useMemo(
     () =>
@@ -36,6 +56,7 @@ export const CreateGeoTaskForm = ({
         schedule_cron: Yup.string()
           .nullable()
           .max(100, t`Schedule cron must be 100 characters or less`),
+        category: Yup.string().nullable(),
       }),
     [],
   );
@@ -48,6 +69,7 @@ export const CreateGeoTaskForm = ({
       brand_keywords: undefined,
       enabled: true,
       schedule_cron: "",
+      category: undefined,
     }),
     [],
   );
@@ -92,6 +114,16 @@ export const CreateGeoTaskForm = ({
           title={t`Brand Keywords`}
           placeholder={t`Enter brand keywords (optional)`}
           nullable
+        />
+        <FormSelect
+          name="category"
+          label={t`Category`}
+          placeholder={t`Select category (optional)`}
+          data={categoryOptions}
+          searchable
+          clearable
+          nullable
+          disabled={isLoadingCategories}
         />
         {/* <FormInput
           name="schedule_cron"

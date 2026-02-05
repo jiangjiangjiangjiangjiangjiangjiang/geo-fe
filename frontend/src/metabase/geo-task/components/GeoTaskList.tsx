@@ -79,6 +79,7 @@ export const GeoTaskList = ({
               <tr>
                 <th>{t`Task ID`}</th>
                 <th>{t`Query Text`}</th>
+                <th>{t`Category`}</th>
                 <th>{t`Brand Keywords`}</th>
                 <th>{t`Enabled`}</th>
                 <th>{t`Actions`}</th>
@@ -89,6 +90,7 @@ export const GeoTaskList = ({
                 <tr key={task.id}>
                   <td>{task.id}</td>
                   <td>{task.query_text}</td>
+                  <td>{task.category || "-"}</td>
                   <td>{task.brand_keywords || "-"}</td>
                   <td>{task.enabled ? t`Yes` : t`No`}</td>
                   <td>
