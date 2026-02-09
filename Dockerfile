@@ -23,6 +23,12 @@ COPY . .
 # version is pulled from git, but git doesn't trust the directory due to different owners
 RUN git config --global --add safe.directory /home/node
 
+# Use project-local Maven settings if available
+RUN if [ -f .m2/settings.xml ]; then \
+      mkdir -p ~/.m2 && \
+      cp .m2/settings.xml ~/.m2/settings.xml; \
+    fi
+
 # install frontend dependencies
 RUN yarn --frozen-lockfile
 
