@@ -7483,6 +7483,11 @@ msgstr ""
 msgid "Category"
 msgstr ""
 
+#: frontend/src/metabase/geo-task/components/GeoTaskList.tsx:83
+#: frontend/src/metabase/geo-task/components/CreateGeoTaskForm.tsx:114
+msgid "Brand Keywords"
+msgstr ""
+
 #: frontend/src/metabase/querying/expressions/config.ts:1569
 #: frontend/src/metabase/querying/expressions/config.ts:1598
 msgid "The column or value to look for."

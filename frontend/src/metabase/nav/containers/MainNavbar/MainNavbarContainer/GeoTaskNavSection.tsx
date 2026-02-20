@@ -50,7 +50,7 @@ export const GeoTaskNavSection = ({
         url={GEO_TASK_URL}
         isSelected={nonEntityItem?.url?.startsWith(GEO_TASK_URL)}
         onClick={onItemSelect}
-        aria-label={t`Geo Tasks`}
+        aria-label={t`GeoTask`}
       >
         {t`Geo Tasks`}
       </PaddedSidebarLink>

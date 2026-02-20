@@ -7272,6 +7272,11 @@ msgstr "要检查的列或值。"
 msgid "Category"
 msgstr "类别"
 
+#: frontend/src/metabase/geo-task/components/GeoTaskList.tsx:83
+#: frontend/src/metabase/geo-task/components/CreateGeoTaskForm.tsx:114
+msgid "Brand Keywords"
+msgstr "品牌关键词"
+
 #: frontend/src/metabase/querying/expressions/config.ts:1569
 #: frontend/src/metabase/querying/expressions/config.ts:1598
 msgid "The column or value to look for."
@@ -24621,6 +24626,25 @@ msgstr "过滤"
 msgctxt "A noun, shown in the sidebar as a navigation link"
 msgid "Data"
 msgstr "数据"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/GeoTaskNavSection.tsx:29
+msgid "GeoTask"
+msgstr "Geo任务"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/GeoTaskNavSection.tsx:35
+msgid "Create a new geo task"
+msgstr "创建新的Geo任务"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/GeoTaskNavSection.tsx:53
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/GeoTaskNavSection.tsx:55
+#: frontend/src/metabase/geo-task/GeoTaskPage.tsx:16
+#: frontend/src/metabase/geo-task/GeoTaskPage.tsx:60
+msgid "Geo Tasks"
+msgstr "Geo任务"
+
+#: frontend/src/metabase/geo-task/GeoTaskPage.tsx:67
+msgid "Create Geo Task"
+msgstr "创建Geo任务"
 
 #: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/components/NotificationSchedule/NotificationSchedule.tsx:72
 #, javascript-format

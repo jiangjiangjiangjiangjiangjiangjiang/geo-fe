@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import type { GeoTask } from "metabase/api/geo-task";
@@ -23,6 +23,56 @@ export const GeoTaskList = ({
 }: GeoTaskListProps) => {
   const [page, setPage] = useState(1);
   const pageSize = 20;
+
+  // 调试日志：检查翻译
+  useEffect(() => {
+    const brandKeywordsTranslated = t`Brand Keywords`;
+    const categoryTranslated = t`Category`;
+
+    // eslint-disable-next-line no-console
+    console.log("[GeoTaskList] Translation Debug:", {
+      brandKeywordsOriginal: "Brand Keywords",
+      brandKeywordsTranslated,
+      categoryOriginal: "Category",
+      categoryTranslated,
+      isBrandKeywordsTranslated: brandKeywordsTranslated !== "Brand Keywords",
+      isCategoryTranslated: categoryTranslated !== "Category",
+    });
+
+    // 检查 ttag 的内部状态和翻译文件
+    try {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore - Accessing ttag internal state for debugging purposes
+      const ttagLocale = (window as any).__ttag_locale__;
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore - Accessing ttag internal state for debugging purposes
+      const ttagTranslations = (window as any).__ttag_translations__;
+
+      // eslint-disable-next-line no-console
+      console.log("[GeoTaskList] ttag internal state:", {
+        ttagLocale,
+        hasTranslations: !!ttagTranslations,
+        brandKeywordsInTranslations: ttagTranslations?.[""]?.["Brand Keywords"],
+      });
+
+      // 检查全局翻译对象
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore - Accessing window.MetabaseUserLocalization for debugging purposes
+      const userLocalization = (window as any).MetabaseUserLocalization;
+      if (userLocalization) {
+        const translations = userLocalization.translations?.[""] || {};
+        // eslint-disable-next-line no-console, no-literal-metabase-strings -- Debug log message, not user-facing
+        console.log("[GeoTaskList] UserLocalization:", {
+          language: userLocalization.headers?.language,
+          hasBrandKeywords: "Brand Keywords" in translations,
+          brandKeywordsValue: translations["Brand Keywords"],
+        });
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.log("[GeoTaskList] Could not access ttag internal state:", e);
+    }
+  }, []);
 
   const { data, isLoading, error } = useListGeoTasksQuery({
     page,
@@ -80,7 +130,18 @@ export const GeoTaskList = ({
                 <th>{t`Task ID`}</th>
                 <th>{t`Query Text`}</th>
                 <th>{t`Category`}</th>
-                <th>{t`Brand Keywords`}</th>
+                <th>
+                  {(() => {
+                    const translated = t`Brand Keywords`;
+                    // eslint-disable-next-line no-console
+                    console.log("[GeoTaskList] Rendering Brand Keywords:", {
+                      original: "Brand Keywords",
+                      translated,
+                      isTranslated: translated !== "Brand Keywords",
+                    });
+                    return translated;
+                  })()}
+                </th>
                 <th>{t`Enabled`}</th>
                 <th>{t`Actions`}</th>
               </tr>
