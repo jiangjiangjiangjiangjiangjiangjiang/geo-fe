@@ -19,4 +19,6 @@ check_clojure_cli
 source "./bin/clear-outdated-cpcaches.sh"
 clear_outdated_cpcaches
 
+source "./bin/use-project-maven-settings.sh"
+
 clojure -X:build:drivers:build/driver :driver $@
