@@ -33,11 +33,30 @@ RUN if [ -f .m2/settings.xml ]; then \
 RUN yarn --frozen-lockfile
 
 # If VERSION is not provided, use git to get the latest tag or generate a snapshot version
-RUN if [ -z "$VERSION" ]; then \
+# 添加重试机制以处理网络下载失败（如 opensaml 仓库连接问题）
+RUN set -e && \
+    if [ -z "$VERSION" ]; then \
       VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0-SNAPSHOT"); \
     fi && \
-#    INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION}
-    INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version "\"${VERSION}\""
+    MAX_RETRIES=5 && \
+    RETRY_COUNT=0 && \
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do \
+      echo "开始构建 (尝试 $((RETRY_COUNT + 1))/$MAX_RETRIES)..."; \
+      if INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version "\"${VERSION}\""; then \
+        echo "构建成功！"; \
+        exit 0; \
+      fi; \
+      RETRY_COUNT=$((RETRY_COUNT + 1)); \
+      if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then \
+        echo "构建失败，将在 15 秒后重试 ($RETRY_COUNT/$MAX_RETRIES)..."; \
+        sleep 15; \
+        echo "清理缓存..."; \
+        rm -rf .cpcache ~/.m2/repository/org/opensaml 2>/dev/null || true; \
+      else \
+        echo "构建失败，已重试 $MAX_RETRIES 次"; \
+        exit 1; \
+      fi; \
+    done
 
 # ###################
 # # STAGE 2: runner
