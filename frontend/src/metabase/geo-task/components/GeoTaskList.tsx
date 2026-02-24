@@ -9,10 +9,12 @@ import {
 } from "metabase/api/geo-task";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import { useToast } from "metabase/common/hooks";
+import { useLocale, useToast } from "metabase/common/hooks";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { Button, Flex } from "metabase/ui";
+
+import { ScheduleConfigModal } from "./ScheduleConfigModal";
 
 interface GeoTaskListProps {
   onTaskCreated?: () => void;
@@ -81,7 +83,14 @@ export const GeoTaskList = ({
   const [executeGeoTask, { isLoading: isExecuting }] =
     useExecuteGeoTaskMutation();
   const [executingId, setExecutingId] = useState<string | null>(null);
+  const [scheduleModalTask, setScheduleModalTask] = useState<GeoTask | null>(
+    null,
+  );
   const [sendToast] = useToast();
+  const { locale } = useLocale();
+  const configureCrontabLabel =
+    (locale && locale.startsWith("zh") ? "定时任务配置" : null) ??
+    t`Configure Crontab`;
 
   const tasks = data?.items || [];
   const total = data?.total ?? 0;
@@ -118,84 +127,100 @@ export const GeoTaskList = ({
 
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-      <div className={cx(CS.bordered, CS.rounded, CS.full)}>
-        {tasks.length === 0 ? (
-          <div className={cx(CS.flex, CS.layoutCentered, CS.p4)}>
-            <p className={CS.textSecondary}>{t`No geo tasks found`}</p>
-          </div>
-        ) : (
-          <table className={AdminS.ContentTable}>
-            <thead>
-              <tr>
-                <th>{t`Task ID`}</th>
-                <th>{t`Query Text`}</th>
-                <th>{t`Category`}</th>
-                <th>
-                  {(() => {
-                    const translated = t`Brand Keywords`;
-                    // eslint-disable-next-line no-console
-                    console.log("[GeoTaskList] Rendering Brand Keywords:", {
-                      original: "Brand Keywords",
-                      translated,
-                      isTranslated: translated !== "Brand Keywords",
-                    });
-                    return translated;
-                  })()}
-                </th>
-                <th>{t`Enabled`}</th>
-                <th>{t`Actions`}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((task) => (
-                <tr key={task.id}>
-                  <td>{task.id}</td>
-                  <td>{task.query_text}</td>
-                  <td>{task.category || "-"}</td>
-                  <td>{task.brand_keywords || "-"}</td>
-                  <td>{task.enabled ? t`Yes` : t`No`}</td>
-                  <td>
-                    <Button
-                      size="sm"
-                      variant="filled"
-                      onClick={() => handleExecute(task)}
-                      disabled={isExecuting && executingId === task.id}
-                      loading={isExecuting && executingId === task.id}
-                    >
-                      {t`Execute`}
-                    </Button>
-                  </td>
+      <>
+        <div className={cx(CS.bordered, CS.rounded, CS.full)}>
+          {tasks.length === 0 ? (
+            <div className={cx(CS.flex, CS.layoutCentered, CS.p4)}>
+              <p className={CS.textSecondary}>{t`No geo tasks found`}</p>
+            </div>
+          ) : (
+            <table className={AdminS.ContentTable}>
+              <thead>
+                <tr>
+                  <th>{t`Task ID`}</th>
+                  <th>{t`Query Text`}</th>
+                  <th>{t`Category`}</th>
+                  <th>
+                    {(() => {
+                      const translated = t`Brand Keywords`;
+                      // eslint-disable-next-line no-console
+                      console.log("[GeoTaskList] Rendering Brand Keywords:", {
+                        original: "Brand Keywords",
+                        translated,
+                        isTranslated: translated !== "Brand Keywords",
+                      });
+                      return translated;
+                    })()}
+                  </th>
+                  <th>{t`Enabled`}</th>
+                  <th>{t`Actions`}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {tasks.length > 0 && shouldShowPagination && (
-          <div
-            style={{
-              borderTop: "1px solid var(--mb-color-border)",
-              padding: "1rem",
-            }}
-          >
-            <Flex justify="end">
-              <PaginationControls
-                page={page - 1}
-                pageSize={pageSize}
-                itemsLength={tasks.length}
-                total={total}
-                showTotal
-                onPreviousPage={page > 1 ? () => setPage(page - 1) : null}
-                onNextPage={
-                  (totalPages > 0 && page < totalPages) ||
-                  (totalPages === 0 && tasks.length === pageSize)
-                    ? () => setPage(page + 1)
-                    : null
-                }
-              />
-            </Flex>
-          </div>
-        )}
-      </div>
+              </thead>
+              <tbody>
+                {tasks.map((task) => (
+                  <tr key={task.id}>
+                    <td>{task.id}</td>
+                    <td>{task.query_text}</td>
+                    <td>{task.category || "-"}</td>
+                    <td>{task.brand_keywords || "-"}</td>
+                    <td>{task.enabled ? t`Yes` : t`No`}</td>
+                    <td>
+                      <Flex gap="xs" wrap="wrap" align="center">
+                        <Button
+                          size="sm"
+                          variant="filled"
+                          onClick={() => handleExecute(task)}
+                          disabled={isExecuting && executingId === task.id}
+                          loading={isExecuting && executingId === task.id}
+                        >
+                          {t`Execute`}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setScheduleModalTask(task)}
+                        >
+                          {configureCrontabLabel}
+                        </Button>
+                      </Flex>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {tasks.length > 0 && shouldShowPagination && (
+            <div
+              style={{
+                borderTop: "1px solid var(--mb-color-border)",
+                padding: "1rem",
+              }}
+            >
+              <Flex justify="end">
+                <PaginationControls
+                  page={page - 1}
+                  pageSize={pageSize}
+                  itemsLength={tasks.length}
+                  total={total}
+                  showTotal
+                  onPreviousPage={page > 1 ? () => setPage(page - 1) : null}
+                  onNextPage={
+                    (totalPages > 0 && page < totalPages) ||
+                    (totalPages === 0 && tasks.length === pageSize)
+                      ? () => setPage(page + 1)
+                      : null
+                  }
+                />
+              </Flex>
+            </div>
+          )}
+        </div>
+        <ScheduleConfigModal
+          task={scheduleModalTask}
+          opened={scheduleModalTask != null}
+          onClose={() => setScheduleModalTask(null)}
+        />
+      </>
     </LoadingAndErrorWrapper>
   );
 };

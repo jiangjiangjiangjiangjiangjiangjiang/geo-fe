@@ -32,6 +32,7 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
     url?.startsWith("/api/geo-task/add") ||
     url === "/api/geo-task/execute" ||
     url?.startsWith("/api/geo-task/execute") ||
+    (url?.startsWith("/api/geo-task/") && url?.includes("/schedule")) ||
     url === "/api/categories" ||
     url?.startsWith("/api/categories");
 
@@ -58,6 +59,13 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
     ) {
       // Handle /api/geo-task/execute
       url = `${GEO_TASK_API_BASE_URL}/api/geo-task/execute`;
+    } else if (
+      url?.startsWith("/api/geo-task/") &&
+      url?.includes("/schedule")
+    ) {
+      // Handle GET/PUT/DELETE /api/geo-task/{task_id}/schedule
+      const path = url.replace(/^\//, "");
+      url = `${GEO_TASK_API_BASE_URL}/${path}`;
     } else if (
       url === "/api/categories" ||
       url?.startsWith("/api/categories")

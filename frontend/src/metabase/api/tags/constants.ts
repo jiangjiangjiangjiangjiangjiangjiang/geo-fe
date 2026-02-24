@@ -19,6 +19,7 @@ export const TAG_TYPES = [
   "field",
   "field-values",
   "geo-task",
+  "geo-task-schedule",
   "glossary",
   "indexed-entity",
   "logger-preset",

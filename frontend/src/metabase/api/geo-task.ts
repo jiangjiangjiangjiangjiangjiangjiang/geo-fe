@@ -55,6 +55,21 @@ export interface ExecuteGeoTaskResponse {
   message: string;
 }
 
+/** Task schedule config (crontab) response from API */
+export interface ScheduleConfigResponse {
+  task_id: string;
+  schedule_cron: string | null;
+  enabled: boolean;
+  last_run_at: string | null;
+  next_run_at: string | null;
+}
+
+/** Request body for setting task schedule */
+export interface ScheduleConfigRequest {
+  schedule_cron: string;
+  enabled?: boolean;
+}
+
 export interface Category {
   name: string;
   description: string;
@@ -104,6 +119,28 @@ export const geoTaskApi = Api.injectEndpoints({
         url: "/api/categories",
       }),
     }),
+    getTaskSchedule: builder.query<ScheduleConfigResponse, string>({
+      query: (taskId) => ({
+        method: "GET",
+        url: `/api/geo-task/${taskId}/schedule`,
+      }),
+      providesTags: (_result, _error, taskId) => [
+        { type: "geo-task-schedule", id: taskId },
+      ],
+    }),
+    setTaskSchedule: builder.mutation<
+      ScheduleConfigResponse,
+      { taskId: string; body: ScheduleConfigRequest }
+    >({
+      query: ({ taskId, body }) => ({
+        method: "PUT",
+        url: `/api/geo-task/${taskId}/schedule`,
+        body,
+      }),
+      invalidatesTags: (_result, _error, { taskId }) => [
+        { type: "geo-task-schedule", id: taskId },
+      ],
+    }),
   }),
 });
 
@@ -112,4 +149,6 @@ export const {
   useCreateGeoTaskMutation,
   useExecuteGeoTaskMutation,
   useGetCategoriesQuery,
+  useGetTaskScheduleQuery,
+  useSetTaskScheduleMutation,
 } = geoTaskApi;

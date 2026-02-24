@@ -40,6 +40,7 @@ export async function loadLocalization(locale) {
             const hasExecute = "Execute" in translations;
             const hasGeoTask = "GeoTask" in translations;
             const hasCreateNewGeoTask = "Create a new geo task" in translations;
+            const hasConfigureCrontab = "Configure Crontab" in translations;
 
             // 如果缺少翻译且是中文语言，添加中文兜底
             if (
@@ -151,6 +152,16 @@ export async function loadLocalization(locale) {
                 translations["Create a new geo task"] = {
                   msgid: "Create a new geo task",
                   msgstr: ["创建新的Geo任务"],
+                };
+              }
+              if (!hasConfigureCrontab) {
+                // eslint-disable-next-line no-console
+                console.log(
+                  `[i18n] Adding fallback translation for "Configure Crontab"`,
+                );
+                translations["Configure Crontab"] = {
+                  msgid: "Configure Crontab",
+                  msgstr: ["定时任务配置"],
                 };
               }
             }
@@ -345,6 +356,16 @@ function setLanguage(translationsObject) {
         msgstr: ["创建新的Geo任务"],
       };
     }
+    if (!("Configure Crontab" in translations)) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[i18n] Adding fallback translation for "Configure Crontab" in setLanguage`,
+      );
+      translations["Configure Crontab"] = {
+        msgid: "Configure Crontab",
+        msgstr: ["定时任务配置"],
+      };
+    }
   }
 
   // Debug: Check before addMsgIds
@@ -446,6 +467,10 @@ function setLanguage(translationsObject) {
             "Create a new geo task": {
               msgid: "Create a new geo task",
               msgstr: ["创建新的Geo任务"],
+            },
+            "Configure Crontab": {
+              msgid: "Configure Crontab",
+              msgstr: ["定时任务配置"],
             },
           };
 
@@ -628,6 +653,10 @@ function addMsgIds(translationsObject) {
       "Create a new geo task": {
         msgid: "Create a new geo task",
         msgstr: ["创建新的Geo任务"],
+      },
+      "Configure Crontab": {
+        msgid: "Configure Crontab",
+        msgstr: ["定时任务配置"],
       },
     };
 

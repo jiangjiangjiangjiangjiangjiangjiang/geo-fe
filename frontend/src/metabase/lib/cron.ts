@@ -1,5 +1,6 @@
 import { isValidCronExpression } from "cron-expression-validator";
-import cronstrue from "cronstrue";
+// eslint-disable-next-line no-restricted-imports -- used for computing next run times
+import * as cronParser from "cron-parser";
 import { t } from "ttag";
 import { memoize } from "underscore";
 
@@ -90,4 +91,47 @@ export function formatCronExpressionForUI(cronExpression: string): string {
   const [, ...partsWithoutSeconds] = cronExpression.split(" ");
   const partsWithoutSecondsAndYear = partsWithoutSeconds.slice(0, -1);
   return partsWithoutSecondsAndYear.join(" ");
+}
+
+/** Format date as YYYY-MM-DD HH:mm:ss for display as "next run time" */
+function formatRunTime(date: Date): string {
+  const y = date.getFullYear();
+  const mo = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const h = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  const s = String(date.getSeconds()).padStart(2, "0");
+  return `${y}-${mo}-${day} ${h}:${min}:${s}`;
+}
+
+/**
+ * Get the next N run times for a cron expression (5-field: min hour dom month dow).
+ * Returns strings in YYYY-MM-DD HH:mm:ss format, or [] if expression is invalid.
+ */
+export function getNextRunTimes(
+  cronExpression: string,
+  count: number = 5,
+): string[] {
+  const expr = cronExpression.trim();
+  if (!expr) {
+    return [];
+  }
+  try {
+    // cron-parser: 5-field = minute hour day-of-month month day-of-week
+    const interval = cronParser.parseExpression(expr, {
+      currentDate: new Date(),
+    });
+    const times: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const next = interval.next();
+      const date =
+        typeof next.toDate === "function"
+          ? next.toDate()
+          : new Date(next.toString());
+      times.push(formatRunTime(date));
+    }
+    return times;
+  } catch {
+    return [];
+  }
 }
