@@ -59,7 +59,6 @@ export interface ExecuteGeoTaskResponse {
 export interface ScheduleConfigResponse {
   task_id: string;
   schedule_cron: string | null;
-  enabled: boolean;
   last_run_at: string | null;
   next_run_at: string | null;
 }
@@ -67,7 +66,6 @@ export interface ScheduleConfigResponse {
 /** Request body for setting task schedule */
 export interface ScheduleConfigRequest {
   schedule_cron: string;
-  enabled?: boolean;
 }
 
 export interface Category {

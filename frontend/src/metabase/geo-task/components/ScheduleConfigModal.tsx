@@ -11,7 +11,6 @@ import { getNextRunTimes, getScheduleExplanation } from "metabase/lib/cron";
 import {
   Alert,
   Button,
-  Checkbox,
   Flex,
   Modal,
   Stack,
@@ -70,7 +69,6 @@ export function ScheduleConfigModal({
     (locale && locale.startsWith("zh") ? "执行计划" : null) ??
     t`Execution plan`;
   const [cronInput, setCronInput] = useState("");
-  const [enabledInput, setEnabledInput] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const editRunTimes = useMemo(
@@ -81,7 +79,6 @@ export function ScheduleConfigModal({
   useEffect(() => {
     if (schedule) {
       setCronInput(schedule.schedule_cron ?? "");
-      setEnabledInput(schedule.enabled);
     }
   }, [schedule]);
 
@@ -104,7 +101,7 @@ export function ScheduleConfigModal({
     try {
       await setSchedule({
         taskId,
-        body: { schedule_cron: cronInput.trim(), enabled: enabledInput },
+        body: { schedule_cron: cronInput.trim() },
       }).unwrap();
       sendToast({ message: t`Schedule updated`, icon: "check" });
       onClose();
@@ -193,11 +190,6 @@ export function ScheduleConfigModal({
                   )}
                 </Stack>
               )}
-              <Checkbox
-                label={t`Enabled`}
-                checked={enabledInput}
-                onChange={(e) => setEnabledInput(e.currentTarget.checked)}
-              />
             </>
           )}
 
