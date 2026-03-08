@@ -6,8 +6,11 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.postgresql.util PGobject)))
 
 (set! *warn-on-reflection* true)
 
@@ -37,6 +40,22 @@
   [sql & params]
   (let [jdbc-spec (get-geo-jdbc-spec)]
     (jdbc/execute! jdbc-spec (into [sql] params))))
+
+(defn- to-pg-jsonb
+  "Convert a sequential collection to a PGobject for JSONB column."
+  [coll]
+  (when (seq coll)
+    (doto (PGobject.)
+      (.setType "jsonb")
+      (.setValue (json/encode (vec coll))))))
+
+(defn- to-pg-jsonb-map
+  "Convert a map (e.g. {brand [keywords]}) to a PGobject for JSONB column."
+  [m]
+  (when (and m (seq m))
+    (doto (PGobject.)
+      (.setType "jsonb")
+      (.setValue (json/encode m)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -78,8 +97,10 @@
         tasks (if (seq where-params)
                 (apply query-geo-database list-sql list-params)
                 (query-geo-database list-sql page-size offset))
-        total-pages (Math/ceil (/ total page-size))]
-    {:items      tasks
+        total-pages (Math/ceil (/ total page-size))
+        ;; Expose product_brand for API (DB may still have usr_company_name)
+        items (map #(assoc % :product_brand (or (:product_brand %) (:usr_company_name %))) tasks)]
+    {:items      items
      :total      total
      :page       page
      :page_size  page-size
@@ -90,67 +111,91 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/add"
-  "Create a new geo task."
+  "Create a new geo task. Request: task_name required; query_text, ai_model, ai_mode, product_brand,
+   product_keywords, selling_point_keywords, comparison_brands (map of brand -> [keywords]), schedule_cron optional."
   [_route-params
    _query-params
    {:as body}
    :- [:map
-       [:query_text ms/NonBlankString]
+       [:task_name ms/NonBlankString]
+       [:query_text {:optional true} [:maybe :string]]
+       [:ai_model {:optional true} [:maybe :string]]
+       [:ai_mode {:optional true} [:maybe :string]]
        [:platform_name {:optional true} [:maybe :string]]
-       [:usr_company_name {:optional true} [:maybe :string]]
-       [:brand_keywords {:optional true} [:maybe :string]]
-       [:schedule_cron {:optional true} [:maybe :string]]
-       [:enabled {:optional true} [:maybe :boolean]]
-       [:category {:optional true} [:maybe :string]]]]
+       [:product_brand {:optional true} [:maybe :string]]
+       [:product_keywords {:optional true} [:maybe :string]]
+       [:selling_point_keywords {:optional true} [:maybe [:sequential :string]]]
+       [:comparison_brands {:optional true} [:maybe [:map-of :string [:sequential :string]]]]
+       [:schedule_cron {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (let [task-id (java.util.UUID/randomUUID)
         now (java.time.Instant/now)
-        ;; Helper to find platform_id by platform_name
-        find-platform-id (fn [platform-name]
-                           (when platform-name
+        ;; Resolve platform_id by ai_model (or platform_name for backward compat)
+        find-platform-id (fn [name]
+                           (when (and name (not (str/blank? name)))
                              (let [result (first (query-geo-database
-                                                  "SELECT id FROM platforms WHERE name = ?" platform-name))]
+                                                  "SELECT id FROM platforms WHERE name = ?" (str/trim name)))]
                                (:id result))))
-        ;; Helper to find usr_company_id by usr_company_name
-        find-usr-company-id (fn [usr-company-name]
-                              (when usr-company-name
+        platform-name (or (:ai_model body) (:platform_name body))
+        find-usr-company-id (fn [brand-name]
+                              (when (and brand-name (not (str/blank? brand-name)))
                                 (let [result (first (query-geo-database
-                                                     "SELECT id FROM usr_companies WHERE name = ?" usr-company-name))]
+                                                     "SELECT id FROM usr_companies WHERE name = ?" brand-name))]
                                   (:id result))))
-        ;; Normalize body: convert empty strings to nil
         normalized-body (-> body
-                            (update :brand_keywords #(if (and (string? %) (empty? %)) nil %))
-                            (update :schedule_cron #(if (and (string? %) (empty? %)) nil %))
-                            (update :category #(if (and (string? %) (empty? %)) nil %)))
-        ;; Look up IDs from names
-        platform-id (find-platform-id (:platform_name normalized-body))
-        usr-company-id (find-usr-company-id (:usr_company_name normalized-body))
+                            (update :product_keywords #(if (and (string? %) (str/blank? %)) nil %))
+                            (update :schedule_cron #(if (and (string? %) (str/blank? %)) nil %)))
+        platform-id (find-platform-id platform-name)
+        usr-company-id (find-usr-company-id (:product_brand normalized-body))
         task-data (-> normalized-body
-                      (select-keys [:query_text :brand_keywords :schedule_cron :enabled :category])
+                      (select-keys [:task_name :query_text :ai_mode :product_brand :product_keywords
+                                    :comparison_brands :selling_point_keywords :schedule_cron])
                       (assoc :id task-id
                              :platform_id platform-id
-                             :platform_name (:platform_name normalized-body)
+                             :platform_name platform-name
                              :usr_company_id usr-company-id
-                             :usr_company_name (:usr_company_name normalized-body)
+                             :product_brand (:product_brand normalized-body)
                              :created_at now
-                             :updated_at now)
-                      (update :enabled #(if (nil? %) true %)))
-        sql "INSERT INTO geo_tasks (id, platform_id, usr_company_id, query_text, brand_keywords, enabled, schedule_cron, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *"
+                             :updated_at now
+                             :enabled true))
+        sql (str "INSERT INTO geo_tasks (id, platform_id, usr_company_id, task_name, query_text, ai_mode, "
+                 "product_keywords, comparison_brands, selling_point_keywords, enabled, schedule_cron, created_at, updated_at) "
+                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *")
         params [(:id task-data)
                 (:platform_id task-data)
                 (:usr_company_id task-data)
+                (:task_name task-data)
                 (:query_text task-data)
-                (:brand_keywords task-data)
+                (:ai_mode task-data)
+                (:product_keywords task-data)
+                (to-pg-jsonb-map (:comparison_brands task-data))
+                (to-pg-jsonb (:selling_point_keywords task-data))
                 (:enabled task-data)
                 (:schedule_cron task-data)
-                (:category task-data)
                 (:created_at task-data)
                 (:updated_at task-data)]
         inserted-task (first (apply query-geo-database sql params))]
-    ;; Return task with platform_name and usr_company_name included
     (assoc inserted-task
            :platform_name (:platform_name task-data)
-           :usr_company_name (:usr_company_name task-data))))
+           :product_brand (:product_brand task-data))))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :put "/:id"
+  "Update a geo task (e.g. enable/disable)."
+  [{:keys [id]} :- [:map [:id ms/UUIDString]]
+   _query-params
+   {:keys [enabled]} :- [:map [:enabled {:optional true} [:maybe :boolean]]]]
+  (api/check-superuser)
+  (let [task-uuid (java.util.UUID/fromString id)]
+    (api/let-404 [task (first (query-geo-database "SELECT * FROM geo_tasks WHERE id = ?" task-uuid))]
+      (when (some? enabled)
+        (execute-geo-database "UPDATE geo_tasks SET enabled = ?, updated_at = ? WHERE id = ?"
+                              enabled (java.time.Instant/now) task-uuid))
+      (first (query-geo-database "SELECT * FROM geo_tasks WHERE id = ?" task-uuid)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

@@ -6,25 +6,33 @@ export interface GeoTask {
   platform_id?: string;
   platform_name?: string;
   usr_company_id?: string;
-  usr_company_name?: string;
-  query_text: string;
-  brand_keywords?: string;
+  product_brand?: string;
+  task_name?: string;
+  query_text?: string;
+  ai_model?: string;
+  ai_mode?: string;
+  comparison_brands?: string[] | Record<string, string[]>;
+  product_keywords?: string;
+  selling_point_keywords?: string[];
   enabled?: boolean;
   schedule_cron?: string;
-  category?: string;
   last_run_at?: string;
   created_at?: string;
   updated_at?: string;
 }
 
+/** Create request for POST api/geo-task/add */
 export interface CreateGeoTaskRequest {
-  query_text: string;
-  platform_name?: string;
-  usr_company_name?: string;
-  brand_keywords?: string;
+  task_name: string;
+  query_text?: string;
+  ai_model?: string;
+  ai_mode?: string;
+  product_brand?: string;
+  product_keywords?: string;
+  selling_point_keywords?: string[];
+  /** 竞品及关键词：{ 竞品名: [关键词1, 关键词2] } */
+  comparison_brands?: Record<string, string[]>;
   schedule_cron?: string;
-  enabled?: boolean;
-  category?: string;
 }
 
 export interface ListGeoTasksRequest {
@@ -41,6 +49,23 @@ export interface ListGeoTasksResponse {
   page: number;
   page_size: number;
   total_pages: number;
+}
+
+/** Request body for toggle (enable/disable) – aligns with Python ToggleRequest */
+export interface ToggleRequest {
+  enabled: boolean;
+}
+
+/** Response from POST .../toggle – aligns with Python ToggleResponse */
+export interface ToggleResponse {
+  success: boolean;
+  message: string;
+  enabled: boolean;
+}
+
+export interface UpdateGeoTaskRequest {
+  taskId: string;
+  enabled: boolean;
 }
 
 export interface ExecuteGeoTaskRequest {
@@ -80,6 +105,12 @@ export interface GetCategoriesResponse {
   total: number;
 }
 
+/** Single AI platform item from GET /api/ai-platforms (for task ai_model selection) */
+export interface AiPlatformItem {
+  key: string;
+  name: string;
+}
+
 export const geoTaskApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listGeoTasks: builder.query<ListGeoTasksResponse, ListGeoTasksRequest>({
@@ -101,6 +132,15 @@ export const geoTaskApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_result, error) => (error ? [] : [listTag("geo-task")]),
     }),
+    /** POST /queries/{task_id}/toggle – enable/disable task (Python backend) */
+    updateGeoTask: builder.mutation<ToggleResponse, UpdateGeoTaskRequest>({
+      query: ({ taskId, enabled }) => ({
+        method: "POST",
+        url: `/api/geo-task/${taskId}/toggle`,
+        body: { enabled } as ToggleRequest,
+      }),
+      invalidatesTags: (_result, error) => (error ? [] : [listTag("geo-task")]),
+    }),
     executeGeoTask: builder.mutation<
       ExecuteGeoTaskResponse,
       ExecuteGeoTaskRequest
@@ -115,6 +155,12 @@ export const geoTaskApi = Api.injectEndpoints({
       query: () => ({
         method: "GET",
         url: "/api/categories",
+      }),
+    }),
+    getAiPlatforms: builder.query<AiPlatformItem[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ai-platforms",
       }),
     }),
     getTaskSchedule: builder.query<ScheduleConfigResponse, string>({
@@ -145,8 +191,10 @@ export const geoTaskApi = Api.injectEndpoints({
 export const {
   useListGeoTasksQuery,
   useCreateGeoTaskMutation,
+  useUpdateGeoTaskMutation,
   useExecuteGeoTaskMutation,
   useGetCategoriesQuery,
+  useGetAiPlatformsQuery,
   useGetTaskScheduleQuery,
   useSetTaskScheduleMutation,
 } = geoTaskApi;

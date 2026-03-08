@@ -24,7 +24,7 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
     return { error: "Invalid HTTP method" };
   }
 
-  // Special handling for /api/geo-task endpoints and /api/categories - use port 8000
+  // Special handling for /api/geo-task endpoints, /api/categories, /api/ai-platforms - use port 8000
   const isGeoTaskEndpoint =
     url === "/api/geo-task/list" ||
     url?.startsWith("/api/geo-task/list") ||
@@ -33,8 +33,11 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
     url === "/api/geo-task/execute" ||
     url?.startsWith("/api/geo-task/execute") ||
     (url?.startsWith("/api/geo-task/") && url?.includes("/schedule")) ||
+    (method === "POST" && url?.match(/^\/api\/geo-task\/[^/]+\/toggle$/)) ||
     url === "/api/categories" ||
-    url?.startsWith("/api/categories");
+    url?.startsWith("/api/categories") ||
+    url === "/api/ai-platforms" ||
+    url?.startsWith("/api/ai-platforms");
 
   if (isGeoTaskEndpoint) {
     // Handle /api/geo-task/list with query params
@@ -60,6 +63,16 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
       // Handle /api/geo-task/execute
       url = `${GEO_TASK_API_BASE_URL}/api/geo-task/execute`;
     } else if (
+      method === "POST" &&
+      url?.match(/^\/api\/geo-task\/[^/]+\/toggle$/)
+    ) {
+      // Handle POST /api/geo-task/{task_id}/toggle -> backend api/queries/{task_id}/toggle
+      const match = url.match(/^\/api\/geo-task\/([^/]+)\/toggle$/);
+      const taskId = match?.[1];
+      if (taskId) {
+        url = `${GEO_TASK_API_BASE_URL}/api/queries/${taskId}/toggle`;
+      }
+    } else if (
       url?.startsWith("/api/geo-task/") &&
       url?.includes("/schedule")
     ) {
@@ -72,6 +85,12 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
     ) {
       // Handle /api/categories
       url = `${GEO_TASK_API_BASE_URL}/api/categories`;
+    } else if (
+      url === "/api/ai-platforms" ||
+      url?.startsWith("/api/ai-platforms")
+    ) {
+      // Handle GET /api/ai-platforms
+      url = `${GEO_TASK_API_BASE_URL}/api/ai-platforms`;
     }
 
     // Use native fetch for full URL to avoid basename issues

@@ -147,7 +147,7 @@ export function ScheduleConfigModal({
             </Alert>
           )}
           <Text size="sm" c="dimmed">
-            {t`Task`}: {task.query_text || task.id}
+            {t`Task`}: {task.task_name ?? task.query_text ?? task.id}
           </Text>
 
           {isLoading ? (

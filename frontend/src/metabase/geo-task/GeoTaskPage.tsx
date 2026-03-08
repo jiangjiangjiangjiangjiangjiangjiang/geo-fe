@@ -1,67 +1,49 @@
-import type { Location } from "history";
-import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { useRouter } from "metabase/router";
 import { Box, Button, Flex, Icon, Title } from "metabase/ui";
 
 import { CreateGeoTaskForm } from "./components/CreateGeoTaskForm";
 import { GeoTaskList } from "./components/GeoTaskList";
 
-interface GeoTaskPageProps {
-  location: Location;
-}
+export const GeoTaskPage = () => {
+  const { location, router } = useRouter();
 
-export const GeoTaskPage = ({ location }: GeoTaskPageProps) => {
-  usePageTitle(t`Geo Tasks`);
-  const shouldShowCreateForm =
+  // Derive showCreateForm only from URL so that clicking "Geo任务" in sidebar (navigates to /geo-task) always shows list
+  const showCreateForm =
     location?.query?.create === "true" ||
     String(location?.query?.create) === "true";
-  const [showCreateForm, setShowCreateForm] = useState(shouldShowCreateForm);
 
-  // Clear the create query parameter when form is closed
-  useEffect(() => {
-    if (!showCreateForm && location?.query?.create) {
-      const newQuery = { ...location.query };
-      delete newQuery.create;
-      // Note: In React Router 3, we'd typically use router.replace, but for simplicity
-      // we'll just rely on the state management
-    }
-  }, [showCreateForm, location]);
+  usePageTitle(showCreateForm ? t`New GEO Task` : t`Geo Tasks`);
+
+  const goToList = () => {
+    router.replace({ pathname: "/geo-task", query: {} });
+  };
 
   const handleCreateSuccess = () => {
-    setShowCreateForm(false);
-    // The list will automatically refetch due to RTK Query cache invalidation
-    // Remove the create query parameter from URL
-    if (location?.query?.create) {
-      window.history.replaceState(
-        null,
-        document.title,
-        window.location.pathname,
-      );
-    }
+    // List will refetch via RTK Query cache invalidation
+    goToList();
   };
 
   const handleCancel = () => {
-    setShowCreateForm(false);
-    // Remove the create query parameter from URL
-    if (location?.query?.create) {
-      window.history.replaceState(
-        null,
-        document.title,
-        window.location.pathname,
-      );
-    }
+    goToList();
+  };
+
+  const openCreateForm = () => {
+    router.replace({ pathname: "/geo-task", query: { create: "true" } });
   };
 
   return (
-    <Box p="xl" style={{ maxWidth: "1200px", margin: "0 auto" }}>
+    <Box p="xl" style={{ maxWidth: "100%", width: "100%", margin: 0 }}>
       <Flex justify="space-between" align="center" mb="lg">
-        <Title order={1}>{t`Geo Tasks`}</Title>
+        <Title order={1}>
+          {showCreateForm ? t`New GEO Task` : t`Geo Tasks`}
+        </Title>
         {!showCreateForm && (
           <Button
             leftSection={<Icon name="add" />}
-            onClick={() => setShowCreateForm(true)}
+            onClick={openCreateForm}
             variant="filled"
           >
             {t`Create Geo Task`}
