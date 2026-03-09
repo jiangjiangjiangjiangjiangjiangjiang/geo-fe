@@ -14,6 +14,90 @@ const isAllowedHTTPMethod = (method: any): method is AllowedHTTPMethods => {
   return allowedHTTPMethods.has(method);
 };
 
+function buildQueryString(params: Record<string, unknown> | undefined): string {
+  const queryParams = params || {};
+  return new URLSearchParams(
+    Object.entries(queryParams)
+      .filter(([, v]) => v !== undefined && v !== null)
+      .map(([k, v]) => [k, String(v)]),
+  ).toString();
+}
+
+/**
+ * Rewrite URL for geo-task / categories / ai-platforms endpoints to use GEO_TASK_API_BASE_URL.
+ * Returns the rewritten URL, or null if the request is not one of these endpoints.
+ */
+function getGeoTaskRewrittenUrl(
+  url: string,
+  method: string,
+  params: Record<string, unknown> | undefined,
+): string | null {
+  const isList =
+    url === "/api/geo-task/list" || url?.startsWith("/api/geo-task/list");
+  const isAdd =
+    url === "/api/geo-task/add" || url?.startsWith("/api/geo-task/add");
+  const isExecute =
+    url === "/api/geo-task/execute" || url?.startsWith("/api/geo-task/execute");
+  const isSchedule =
+    url?.startsWith("/api/geo-task/") && url?.includes("/schedule");
+  const isResultsOrSources =
+    url?.startsWith("/api/geo-task/") &&
+    (url?.includes("/results") || url?.includes("/sources"));
+  const isToggle =
+    method === "POST" && url?.match(/^\/api\/geo-task\/[^/]+\/toggle$/);
+  const isCategories =
+    url === "/api/categories" || url?.startsWith("/api/categories");
+  const isAiPlatforms =
+    url === "/api/ai-platforms" || url?.startsWith("/api/ai-platforms");
+
+  if (
+    !isList &&
+    !isAdd &&
+    !isExecute &&
+    !isSchedule &&
+    !isResultsOrSources &&
+    !isToggle &&
+    !isCategories &&
+    !isAiPlatforms
+  ) {
+    return null;
+  }
+
+  if (isList) {
+    const queryString = buildQueryString(params);
+    return `${GEO_TASK_API_BASE_URL}/api/geo-task/list${queryString ? `?${queryString}` : ""}`;
+  }
+  if (isAdd) {
+    return `${GEO_TASK_API_BASE_URL}/api/geo-task/add`;
+  }
+  if (isExecute) {
+    return `${GEO_TASK_API_BASE_URL}/api/geo-task/execute`;
+  }
+  if (isToggle) {
+    const match = url.match(/^\/api\/geo-task\/([^/]+)\/toggle$/);
+    const taskId = match?.[1];
+    return taskId
+      ? `${GEO_TASK_API_BASE_URL}/api/queries/${taskId}/toggle`
+      : null;
+  }
+  if (isSchedule) {
+    const path = url.replace(/^\//, "");
+    return `${GEO_TASK_API_BASE_URL}/${path}`;
+  }
+  if (isResultsOrSources) {
+    const queryString = buildQueryString(params);
+    const path = url.replace(/^\//, "");
+    return `${GEO_TASK_API_BASE_URL}/${path}${queryString ? `?${queryString}` : ""}`;
+  }
+  if (isCategories) {
+    return `${GEO_TASK_API_BASE_URL}/api/categories`;
+  }
+  if (isAiPlatforms) {
+    return `${GEO_TASK_API_BASE_URL}/api/ai-platforms`;
+  }
+  return null;
+}
+
 // custom fetcher that wraps our Api client
 export const apiQuery: BaseQueryFn = async (args, ctx) => {
   const method = typeof args === "string" ? "GET" : (args?.method ?? "GET");
@@ -24,74 +108,9 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
     return { error: "Invalid HTTP method" };
   }
 
-  // Special handling for /api/geo-task endpoints, /api/categories, /api/ai-platforms - use port 8000
-  const isGeoTaskEndpoint =
-    url === "/api/geo-task/list" ||
-    url?.startsWith("/api/geo-task/list") ||
-    url === "/api/geo-task/add" ||
-    url?.startsWith("/api/geo-task/add") ||
-    url === "/api/geo-task/execute" ||
-    url?.startsWith("/api/geo-task/execute") ||
-    (url?.startsWith("/api/geo-task/") && url?.includes("/schedule")) ||
-    (method === "POST" && url?.match(/^\/api\/geo-task\/[^/]+\/toggle$/)) ||
-    url === "/api/categories" ||
-    url?.startsWith("/api/categories") ||
-    url === "/api/ai-platforms" ||
-    url?.startsWith("/api/ai-platforms");
-
-  if (isGeoTaskEndpoint) {
-    // Handle /api/geo-task/list with query params
-    if (url === "/api/geo-task/list" || url?.startsWith("/api/geo-task/list")) {
-      // Build query string from params
-      const queryParams = args?.params || {};
-      const queryString = new URLSearchParams(
-        Object.entries(queryParams)
-          .filter(([, v]) => v !== undefined && v !== null)
-          .map(([k, v]) => [k, String(v)]),
-      ).toString();
-      url = `${GEO_TASK_API_BASE_URL}/api/geo-task/list${queryString ? `?${queryString}` : ""}`;
-    } else if (
-      url === "/api/geo-task/add" ||
-      url?.startsWith("/api/geo-task/add")
-    ) {
-      // Handle /api/geo-task/add
-      url = `${GEO_TASK_API_BASE_URL}/api/geo-task/add`;
-    } else if (
-      url === "/api/geo-task/execute" ||
-      url?.startsWith("/api/geo-task/execute")
-    ) {
-      // Handle /api/geo-task/execute
-      url = `${GEO_TASK_API_BASE_URL}/api/geo-task/execute`;
-    } else if (
-      method === "POST" &&
-      url?.match(/^\/api\/geo-task\/[^/]+\/toggle$/)
-    ) {
-      // Handle POST /api/geo-task/{task_id}/toggle -> backend api/queries/{task_id}/toggle
-      const match = url.match(/^\/api\/geo-task\/([^/]+)\/toggle$/);
-      const taskId = match?.[1];
-      if (taskId) {
-        url = `${GEO_TASK_API_BASE_URL}/api/queries/${taskId}/toggle`;
-      }
-    } else if (
-      url?.startsWith("/api/geo-task/") &&
-      url?.includes("/schedule")
-    ) {
-      // Handle GET/PUT/DELETE /api/geo-task/{task_id}/schedule
-      const path = url.replace(/^\//, "");
-      url = `${GEO_TASK_API_BASE_URL}/${path}`;
-    } else if (
-      url === "/api/categories" ||
-      url?.startsWith("/api/categories")
-    ) {
-      // Handle /api/categories
-      url = `${GEO_TASK_API_BASE_URL}/api/categories`;
-    } else if (
-      url === "/api/ai-platforms" ||
-      url?.startsWith("/api/ai-platforms")
-    ) {
-      // Handle GET /api/ai-platforms
-      url = `${GEO_TASK_API_BASE_URL}/api/ai-platforms`;
-    }
+  const rewrittenUrl = getGeoTaskRewrittenUrl(url, method, args?.params);
+  if (rewrittenUrl !== null) {
+    url = rewrittenUrl;
 
     // Use native fetch for full URL to avoid basename issues
     try {

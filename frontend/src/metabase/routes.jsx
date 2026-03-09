@@ -31,6 +31,8 @@ import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDa
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { GeoTaskPage } from "metabase/geo-task/GeoTaskPage";
+import { GeoTaskResultsPage } from "metabase/geo-task/GeoTaskResultsPage";
+import { GeoTaskSourcesPage } from "metabase/geo-task/GeoTaskSourcesPage";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
@@ -156,6 +158,14 @@ export const getRoutes = (store) => {
           <Route path="trash" component={TrashCollectionLanding} />
 
           <Route path="geo-task" component={GeoTaskPage} />
+          <Route
+            path="geo-task/:taskId/results"
+            component={GeoTaskResultsPage}
+          />
+          <Route
+            path="geo-task/:taskId/sources"
+            component={GeoTaskSourcesPage}
+          />
 
           {PLUGIN_DOCUMENTS.getRoutes()}
 

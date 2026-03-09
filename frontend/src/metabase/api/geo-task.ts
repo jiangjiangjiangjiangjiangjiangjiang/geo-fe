@@ -105,6 +105,76 @@ export interface GetCategoriesResponse {
   total: number;
 }
 
+/** Single result item from GET api/geo-task/{task_id}/results */
+export interface GeoResultResponse {
+  id: number;
+  batch_id: number;
+  query: string;
+  engine: string;
+  platform_id: number | null;
+  platform_name: string | null;
+  geo_task_id: string;
+  usr_company_id: number | null;
+  usr_company_name: string | null;
+  mention_rate: number | null;
+  visibility_score: number;
+  sentiment: number;
+  accuracy: number;
+  raw_content: string | null;
+  processed_content: string | null;
+  query_result: unknown;
+  brand_mentioned: boolean;
+  brand_hits: unknown;
+  brand_rank: number | null;
+  is_first_recommendation: boolean | null;
+  in_top3: boolean | null;
+  selling_point_mentions: unknown;
+  product_keyword_mentions: unknown;
+  sources: unknown;
+  metadata: unknown;
+  collected_at: string | null;
+  processed_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface GeoTaskResultsRequest {
+  taskId: string;
+  page?: number;
+  page_size?: number;
+  batch_id?: number;
+}
+
+export interface GeoResultListResponse {
+  items: GeoResultResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+/** Single source item from GET api/geo-task/{task_id}/sources */
+export interface SourceItem {
+  title: string | null;
+  url: string | null;
+  result_id: number;
+}
+
+export interface GeoTaskSourcesRequest {
+  taskId: string;
+  page?: number;
+  page_size?: number;
+  batch_id?: number;
+}
+
+export interface SourceListResponse {
+  items: SourceItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
 /** Single AI platform item from GET /api/ai-platforms (for task ai_model selection) */
 export interface AiPlatformItem {
   key: string;
@@ -185,6 +255,25 @@ export const geoTaskApi = Api.injectEndpoints({
         { type: "geo-task-schedule", id: taskId },
       ],
     }),
+    getGeoTaskResults: builder.query<
+      GeoResultListResponse,
+      GeoTaskResultsRequest
+    >({
+      query: ({ taskId, page = 1, page_size = 20, batch_id }) => ({
+        method: "GET",
+        url: `/api/geo-task/${taskId}/results`,
+        params: { page, page_size, ...(batch_id != null && { batch_id }) },
+      }),
+    }),
+    getGeoTaskSources: builder.query<SourceListResponse, GeoTaskSourcesRequest>(
+      {
+        query: ({ taskId, page = 1, page_size = 20, batch_id }) => ({
+          method: "GET",
+          url: `/api/geo-task/${taskId}/sources`,
+          params: { page, page_size, ...(batch_id != null && { batch_id }) },
+        }),
+      },
+    ),
   }),
 });
 
@@ -197,4 +286,6 @@ export const {
   useGetAiPlatformsQuery,
   useGetTaskScheduleQuery,
   useSetTaskScheduleMutation,
+  useGetGeoTaskResultsQuery,
+  useGetGeoTaskSourcesQuery,
 } = geoTaskApi;

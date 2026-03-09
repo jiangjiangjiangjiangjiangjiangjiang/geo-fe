@@ -13,6 +13,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useLocale, useToast } from "metabase/common/hooks";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { useRouter } from "metabase/router";
 import { Button, Flex } from "metabase/ui";
 
 const listStyle = {
@@ -92,6 +93,7 @@ export const GeoTaskList = ({
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [sendToast] = useToast();
   const { locale } = useLocale();
+  const { router } = useRouter();
   const isZh = locale?.startsWith("zh");
   const viewResultsLabel = (isZh ? "查看结果" : null) ?? t`View results`;
   const viewSourcesLabel = (isZh ? "查看信源" : null) ?? t`View sources`;
@@ -176,18 +178,12 @@ export const GeoTaskList = ({
     }
   };
 
-  const handleViewResults = (_task: GeoTask) => {
-    sendToast({
-      message: t`View results – coming soon`,
-      icon: "info",
-    });
+  const handleViewResults = (task: GeoTask) => {
+    router.push(`/geo-task/${task.id}/results`);
   };
 
-  const handleViewSources = (_task: GeoTask) => {
-    sendToast({
-      message: t`View sources – coming soon`,
-      icon: "info",
-    });
+  const handleViewSources = (task: GeoTask) => {
+    router.push(`/geo-task/${task.id}/sources`);
   };
 
   return (
