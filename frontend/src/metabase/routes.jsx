@@ -64,6 +64,7 @@ import SegmentListContainer from "metabase/reference/segments/SegmentListContain
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SearchApp from "metabase/search/containers/SearchApp";
+import { NoteSentimentJudgmentPage } from "metabase/seo/sentiment-judgment/NoteSentimentJudgmentPage";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
@@ -165,6 +166,11 @@ export const getRoutes = (store) => {
           <Route
             path="geo-task/:taskId/sources"
             component={GeoTaskSourcesPage}
+          />
+
+          <Route
+            path="seo/sentiment-judgment"
+            component={NoteSentimentJudgmentPage}
           />
 
           {PLUGIN_DOCUMENTS.getRoutes()}

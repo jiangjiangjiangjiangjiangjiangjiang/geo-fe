@@ -27,6 +27,7 @@ export * from "./permission";
 export * from "./persist";
 export * from "./revision";
 export * from "./search";
+export * from "./seo";
 export * from "./segment";
 export * from "./session";
 export * from "./settings";

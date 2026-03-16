@@ -13,16 +13,18 @@ interface GeoTaskNavSectionProps {
   onCreateGeoTask: () => void;
 }
 
+const GEO_TASK_URL = "/geo-task";
+const SEO_SENTIMENT_JUDGMENT_URL = "/seo/sentiment-judgment";
+
 export const GeoTaskNavSection = ({
   nonEntityItem,
   onItemSelect,
   onCreateGeoTask,
 }: GeoTaskNavSectionProps) => {
-  const GEO_TASK_URL = "/geo-task";
-
   const [expandGeoTask = true, setExpandGeoTask] = useUserSetting(
     "expand-geo-task-in-nav",
   );
+  const [expandSeo = true, setExpandSeo] = useUserSetting("expand-seo-in-nav");
 
   return (
     <CollapseSection
@@ -54,6 +56,28 @@ export const GeoTaskNavSection = ({
       >
         {t`Geo Tasks`}
       </PaddedSidebarLink>
+
+      <CollapseSection
+        header={<SidebarHeading>{t`SEO Management`}</SidebarHeading>}
+        initialState={expandSeo ? "expanded" : "collapsed"}
+        iconPosition="right"
+        iconSize={8}
+        onToggle={setExpandSeo}
+        role="section"
+        aria-label={t`SEO Management`}
+      >
+        <PaddedSidebarLink
+          icon="sticky_note"
+          url={SEO_SENTIMENT_JUDGMENT_URL}
+          isSelected={nonEntityItem?.url?.startsWith(
+            SEO_SENTIMENT_JUDGMENT_URL,
+          )}
+          onClick={onItemSelect}
+          aria-label={t`Note sentiment judgment`}
+        >
+          {t`Note sentiment judgment`}
+        </PaddedSidebarLink>
+      </CollapseSection>
     </CollapseSection>
   );
 };

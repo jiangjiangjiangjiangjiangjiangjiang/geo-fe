@@ -472,6 +472,34 @@ function setLanguage(translationsObject) {
               msgid: "Configure Crontab",
               msgstr: ["定时任务配置"],
             },
+            "SEO Management": {
+              msgid: "SEO Management",
+              msgstr: ["SEO管理"],
+            },
+            "Note sentiment judgment": {
+              msgid: "Note sentiment judgment",
+              msgstr: ["笔记情感判断"],
+            },
+            "Excel data result page": {
+              msgid: "Excel data result page",
+              msgstr: ["Excel数据结果页"],
+            },
+            "Note sentiment judgment result Agent": {
+              msgid: "Note sentiment judgment result Agent",
+              msgstr: ["笔记情感判断结果Agent"],
+            },
+            "Click or drag to upload Excel file": {
+              msgid: "Click or drag to upload Excel file",
+              msgstr: ["点击或拖拽上传 Excel 文件"],
+            },
+            "Data results": { msgid: "Data results", msgstr: ["数据结果"] },
+            "Row number": { msgid: "Row number", msgstr: ["行号"] },
+            "Excel data": { msgid: "Excel data", msgstr: ["Excel 数据"] },
+            Result: { msgid: "Result", msgstr: ["结果"] },
+            Pending: { msgid: "Pending", msgstr: ["待处理"] },
+            "Processing...": { msgid: "Processing...", msgstr: ["处理中..."] },
+            Passed: { msgid: "Passed", msgstr: ["通过"] },
+            Failed: { msgid: "Failed", msgstr: ["失败"] },
           };
 
           for (const [key, value] of Object.entries(fallbackTranslations)) {
@@ -658,6 +686,34 @@ function addMsgIds(translationsObject) {
         msgid: "Configure Crontab",
         msgstr: ["定时任务配置"],
       },
+      "SEO Management": {
+        msgid: "SEO Management",
+        msgstr: ["SEO管理"],
+      },
+      "Note sentiment judgment": {
+        msgid: "Note sentiment judgment",
+        msgstr: ["笔记情感判断"],
+      },
+      "Excel data result page": {
+        msgid: "Excel data result page",
+        msgstr: ["Excel数据结果页"],
+      },
+      "Note sentiment judgment result Agent": {
+        msgid: "Note sentiment judgment result Agent",
+        msgstr: ["笔记情感判断结果Agent"],
+      },
+      "Click or drag to upload Excel file": {
+        msgid: "Click or drag to upload Excel file",
+        msgstr: ["点击或拖拽上传 Excel 文件"],
+      },
+      "Data results": { msgid: "Data results", msgstr: ["数据结果"] },
+      "Row number": { msgid: "Row number", msgstr: ["行号"] },
+      "Excel data": { msgid: "Excel data", msgstr: ["Excel 数据"] },
+      Result: { msgid: "Result", msgstr: ["结果"] },
+      Pending: { msgid: "Pending", msgstr: ["待处理"] },
+      "Processing...": { msgid: "Processing...", msgstr: ["处理中..."] },
+      Passed: { msgid: "Passed", msgstr: ["通过"] },
+      Failed: { msgid: "Failed", msgstr: ["失败"] },
     };
 
     for (const [key, value] of Object.entries(fallbackTranslations)) {
