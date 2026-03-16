@@ -494,12 +494,20 @@ function setLanguage(translationsObject) {
             },
             "Data results": { msgid: "Data results", msgstr: ["数据结果"] },
             "Row number": { msgid: "Row number", msgstr: ["行号"] },
+            "Note title": { msgid: "Note title", msgstr: ["笔记标题"] },
+            "Note content": { msgid: "Note content", msgstr: ["笔记内容"] },
             "Excel data": { msgid: "Excel data", msgstr: ["Excel 数据"] },
             Result: { msgid: "Result", msgstr: ["结果"] },
             Pending: { msgid: "Pending", msgstr: ["待处理"] },
             "Processing...": { msgid: "Processing...", msgstr: ["处理中..."] },
             Passed: { msgid: "Passed", msgstr: ["通过"] },
             Failed: { msgid: "Failed", msgstr: ["失败"] },
+            "Excel exceeds the maximum of 100 rows; only the first 100 rows will be processed.":
+              {
+                msgid:
+                  "Excel exceeds the maximum of 100 rows; only the first 100 rows will be processed.",
+                msgstr: ["Excel 超过 100 行上限，仅处理前 100 行。"],
+              },
           };
 
           for (const [key, value] of Object.entries(fallbackTranslations)) {
@@ -708,12 +716,20 @@ function addMsgIds(translationsObject) {
       },
       "Data results": { msgid: "Data results", msgstr: ["数据结果"] },
       "Row number": { msgid: "Row number", msgstr: ["行号"] },
+      "Note title": { msgid: "Note title", msgstr: ["笔记标题"] },
+      "Note content": { msgid: "Note content", msgstr: ["笔记内容"] },
       "Excel data": { msgid: "Excel data", msgstr: ["Excel 数据"] },
       Result: { msgid: "Result", msgstr: ["结果"] },
       Pending: { msgid: "Pending", msgstr: ["待处理"] },
       "Processing...": { msgid: "Processing...", msgstr: ["处理中..."] },
       Passed: { msgid: "Passed", msgstr: ["通过"] },
       Failed: { msgid: "Failed", msgstr: ["失败"] },
+      "Excel exceeds the maximum of 100 rows; only the first 100 rows will be processed.":
+        {
+          msgid:
+            "Excel exceeds the maximum of 100 rows; only the first 100 rows will be processed.",
+          msgstr: ["Excel 超过 100 行上限，仅处理前 100 行。"],
+        },
     };
 
     for (const [key, value] of Object.entries(fallbackTranslations)) {

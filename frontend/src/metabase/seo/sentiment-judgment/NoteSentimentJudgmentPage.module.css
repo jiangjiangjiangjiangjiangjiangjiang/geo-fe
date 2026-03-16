@@ -70,6 +70,57 @@
   pointer-events: none;
 }
 
+.rowLimitAlert {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 640px;
+  margin: var(--mantine-spacing-xl) auto var(--mantine-spacing-md);
+  padding: 14px 20px;
+  background: #b91c1c;
+  border: 2px solid #991b1b;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(185, 28, 28, 0.35);
+  position: relative;
+}
+
+.rowLimitAlertIcon {
+  flex-shrink: 0;
+  color: #fff;
+}
+
+.rowLimitAlertText {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.rowLimitAlertClose {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  opacity: 0.9;
+}
+
+.rowLimitAlertClose:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.2);
+}
+
 .sectionLabel {
   margin-top: var(--mantine-spacing-xl);
   margin-bottom: var(--mantine-spacing-sm);

@@ -19,6 +19,8 @@ type RowResult =
   | { status: "success"; result: string }
   | { status: "error"; message: string };
 
+const MAX_EXCEL_ROWS = 100;
+
 function parseExcelFile(file: File): Promise<RowRecord[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -64,14 +66,6 @@ function rowToSentimentRequest(row: RowRecord): {
   return { note_title: firstVal, note_content: rest || firstVal };
 }
 
-/** Format row as comma-separated display string (e.g. "张三, 28, 北京") */
-function formatRowAsExcelData(row: RowRecord): string {
-  return Object.keys(row)
-    .map((k) => (row[k] != null ? String(row[k]).trim() : ""))
-    .filter(Boolean)
-    .join(", ");
-}
-
 function processFile(
   file: File | null,
   onParsed: (rows: RowRecord[]) => void,
@@ -90,6 +84,7 @@ export const NoteSentimentJudgmentPage = () => {
   const [rows, setRows] = useState<RowRecord[]>([]);
   const [results, setResults] = useState<RowResult[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const [showRowLimitWarning, setShowRowLimitWarning] = useState(false);
   const [sendToast] = useToast();
   const [getSentiment, { isLoading: isApiLoading }] =
     useGetSentimentJudgmentMutation();
@@ -99,14 +94,19 @@ export const NoteSentimentJudgmentPage = () => {
     setFile(chosenFile);
     setRows([]);
     setResults([]);
+    setShowRowLimitWarning(false);
     if (!chosenFile) {
       return;
     }
     processFile(
       chosenFile,
       (parsed) => {
-        setRows(parsed);
-        setResults(parsed.map(() => ({ status: "idle" as const })));
+        const total = parsed.length;
+        const rowsToUse =
+          total > MAX_EXCEL_ROWS ? parsed.slice(0, MAX_EXCEL_ROWS) : parsed;
+        setShowRowLimitWarning(total > MAX_EXCEL_ROWS);
+        setRows(rowsToUse);
+        setResults(rowsToUse.map(() => ({ status: "idle" as const })));
       },
       () => setRows([]),
     );
@@ -274,6 +274,27 @@ export const NoteSentimentJudgmentPage = () => {
 
         {hasRows && (
           <>
+            {showRowLimitWarning && (
+              <div className={S.rowLimitAlert}>
+                <Icon
+                  name="warning_triangle_filled"
+                  size={22}
+                  className={S.rowLimitAlertIcon}
+                  aria-hidden
+                />
+                <span className={S.rowLimitAlertText}>
+                  {t`Excel exceeds the maximum of 100 rows; only the first 100 rows will be processed.`}
+                </span>
+                <button
+                  type="button"
+                  className={S.rowLimitAlertClose}
+                  onClick={() => setShowRowLimitWarning(false)}
+                  aria-label={t`Close`}
+                >
+                  <Icon name="close" size={16} />
+                </button>
+              </div>
+            )}
             <Text size="sm" fw={600} className={S.sectionLabel}>
               {t`Data results`}
             </Text>
@@ -296,20 +317,24 @@ export const NoteSentimentJudgmentPage = () => {
                 <thead>
                   <tr>
                     <th className={S.th}>{t`Row number`}</th>
-                    <th className={S.th}>{t`Excel data`}</th>
+                    <th className={S.th}>{t`Note title`}</th>
+                    <th className={S.th}>{t`Note content`}</th>
                     <th className={S.th}>{t`Result`}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((row, index) => {
                     const res = results[index] ?? { status: "idle" as const };
+                    const { note_title, note_content } =
+                      rowToSentimentRequest(row);
                     return (
                       <tr
                         key={index}
                         className={index % 2 === 1 ? S.rowOdd : undefined}
                       >
                         <td className={S.td}>{index + 1}</td>
-                        <td className={S.td}>{formatRowAsExcelData(row)}</td>
+                        <td className={S.td}>{note_title || "—"}</td>
+                        <td className={S.td}>{note_content || "—"}</td>
                         <td className={S.td}>{renderResult(res)}</td>
                       </tr>
                     );
