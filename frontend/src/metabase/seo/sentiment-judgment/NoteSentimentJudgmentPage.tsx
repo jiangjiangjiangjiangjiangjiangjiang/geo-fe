@@ -77,6 +77,19 @@ function processFile(
   parseExcelFile(file).then(onParsed).catch(onError);
 }
 
+function getResultText(result: RowResult) {
+  if (result.status === "success") {
+    return result.result || t`Passed`;
+  }
+  if (result.status === "error") {
+    return result.message || t`Failed`;
+  }
+  if (result.status === "loading") {
+    return t`Processing...`;
+  }
+  return t`Pending`;
+}
+
 export const NoteSentimentJudgmentPage = () => {
   usePageTitle(t`Note sentiment judgment result Agent`);
 
@@ -206,6 +219,31 @@ export const NoteSentimentJudgmentPage = () => {
     results.length === rows.length &&
     results.every((r) => r.status === "success" || r.status === "error");
 
+  const handleExportExcel = useCallback(() => {
+    if (!hasRows) {
+      return;
+    }
+
+    const exportRows = rows.map((row, index) => {
+      const { note_title, note_content } = rowToSentimentRequest(row);
+      const result = results[index] ?? { status: "idle" as const };
+
+      return {
+        [t`Row number`]: index + 1,
+        [t`Note title`]: note_title || "",
+        [t`Note content`]: note_content || "",
+        [t`Result`]: getResultText(result),
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, t`Data results`);
+
+    const fileName = file?.name?.replace(/\.(xlsx|xls)$/i, "") || "results";
+    XLSX.writeFile(workbook, `${fileName}-sentiment-results.xlsx`);
+  }, [file, hasRows, results, rows]);
+
   const renderResult = (res: RowResult) => {
     if (res.status === "idle") {
       return (
@@ -298,7 +336,13 @@ export const NoteSentimentJudgmentPage = () => {
             <Text size="sm" fw={600} className={S.sectionLabel}>
               {t`Data results`}
             </Text>
-            <Flex mb="md" gap="sm" align="center">
+            <Flex
+              mb="md"
+              gap="sm"
+              align="center"
+              wrap="wrap"
+              className={S.toolbar}
+            >
               <Button
                 leftSection={<Icon name="bolt" />}
                 onClick={handleFetchAllResults}
@@ -306,6 +350,16 @@ export const NoteSentimentJudgmentPage = () => {
                 variant="filled"
               >
                 {t`Fetch results for all rows`}
+              </Button>
+              <Button
+                leftSection={<Icon name="download" />}
+                onClick={handleExportExcel}
+                disabled={!hasRows}
+                variant="filled"
+                className={S.exportButton}
+                aria-label={t`Export Excel`}
+              >
+                {t`Export Excel`}
               </Button>
               <Text size="sm" c="dimmed">
                 {rows.length} {t`rows`}

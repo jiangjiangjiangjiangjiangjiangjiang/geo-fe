@@ -127,6 +127,20 @@
   color: var(--mb-color-text-dark, #2e353b);
 }
 
+.toolbar {
+  flex-wrap: wrap;
+}
+
+.exportButton {
+  background: #16a34a;
+  border-color: #16a34a;
+}
+
+.exportButton:hover {
+  background: #15803d;
+  border-color: #15803d;
+}
+
 .tableWrap {
   overflow-x: auto;
   border-radius: 6px;
