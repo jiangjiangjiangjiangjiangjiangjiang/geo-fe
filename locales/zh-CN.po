@@ -24629,7 +24629,7 @@ msgstr "数据"
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/GeoTaskNavSection.tsx:29
 msgid "GeoTask"
-msgstr "Geo任务"
+msgstr "GEO管理"
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/GeoTaskNavSection.tsx:35
 msgid "Create a new geo task"
@@ -32642,4 +32642,3 @@ msgstr "按国家/地区获取的用户"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "销售额排名前 10 的国家/地区"
-

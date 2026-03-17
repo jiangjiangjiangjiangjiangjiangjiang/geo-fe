@@ -37,7 +37,8 @@ function getGeoTaskRewrittenUrl(
   const isAdd =
     url === "/api/geo-task/add" || url?.startsWith("/api/geo-task/add");
   const isExecute =
-    url === "/api/geo-task/execute" || url?.startsWith("/api/geo-task/execute");
+    url === "/api/geo-task/execute-v2" ||
+    url?.startsWith("/api/geo-task/execute-v2");
   const isSchedule =
     url?.startsWith("/api/geo-task/") && url?.includes("/schedule");
   const isResultsOrSources =
@@ -75,7 +76,7 @@ function getGeoTaskRewrittenUrl(
     return `${GEO_TASK_API_BASE_URL}/api/geo-task/add`;
   }
   if (isExecute) {
-    return `${GEO_TASK_API_BASE_URL}/api/geo-task/execute`;
+    return `${GEO_TASK_API_BASE_URL}/api/geo-task/execute-v2`;
   }
   if (isToggle) {
     const match = url.match(/^\/api\/geo-task\/([^/]+)\/toggle$/);

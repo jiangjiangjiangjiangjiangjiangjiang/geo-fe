@@ -10,7 +10,9 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useRouter } from "metabase/router";
-import { Box, Button, Flex, Icon, Title } from "metabase/ui";
+import { Box, Button, Flex, Icon, Popover, Title } from "metabase/ui";
+
+const PAGE_SIZE_OPTIONS = [20, 50, 100, 200, 500, 1000];
 
 function formatCell(value: unknown): string {
   if (value == null) {
@@ -30,35 +32,140 @@ function formatCell(value: unknown): string {
   return String(value);
 }
 
+function formatExpandedValue(value: unknown): string {
+  if (value == null) {
+    return "-";
+  }
+
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }
+
+  return String(value);
+}
+
+function ExpandableCell({
+  value,
+  emptyLabel = "-",
+}: {
+  value: unknown;
+  emptyLabel?: string;
+}) {
+  if (value == null || value === "") {
+    return <span>{emptyLabel}</span>;
+  }
+
+  const preview = formatCell(value);
+  const content = formatExpandedValue(value);
+
+  return (
+    <Popover position="bottom-start" withArrow shadow="md" width={520}>
+      <Popover.Target>
+        <button
+          type="button"
+          className={CS.link}
+          style={{
+            padding: 0,
+            border: 0,
+            background: "transparent",
+            textAlign: "left",
+            cursor: "pointer",
+          }}
+        >
+          {preview.length > 60 ? preview.slice(0, 60) + "…" : preview}
+        </button>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <div
+          style={{
+            maxWidth: 520,
+            maxHeight: 360,
+            overflow: "auto",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+          }}
+        >
+          {content}
+        </div>
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
+
+function isSourceLike(
+  value: unknown,
+): value is
+  | { title?: unknown; url?: unknown }[]
+  | { title?: unknown; url?: unknown } {
+  return typeof value === "object" && value != null;
+}
+
+function SourcesCell({ value }: { value: unknown }) {
+  if (value == null) {
+    return <span>-</span>;
+  }
+
+  const items = Array.isArray(value) ? value : [value];
+  const sources = items.filter(isSourceLike);
+
+  if (sources.length === 0) {
+    return <span>{formatCell(value)}</span>;
+  }
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+      }}
+    >
+      {sources.map((source, index) => {
+        const title =
+          typeof source.title === "string" && source.title.trim() !== ""
+            ? source.title
+            : null;
+        const url =
+          typeof source.url === "string" && source.url.trim() !== ""
+            ? source.url
+            : null;
+        const label = title ?? url ?? "-";
+
+        return url ? (
+          <a
+            key={`${url}-${index}`}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={CS.link}
+            style={{ wordBreak: "break-word" }}
+            title={url}
+          >
+            {index + 1}. {label}
+          </a>
+        ) : (
+          <span key={`${label}-${index}`} style={{ wordBreak: "break-word" }}>
+            {index + 1}. {label}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 function ResultRow({ result }: { result: GeoResultResponse }) {
   return (
     <tr>
-      <td>{result.id}</td>
       <td>{result.batch_id}</td>
       <td>{result.query ?? "-"}</td>
       <td>{result.engine ?? "-"}</td>
-      <td>{result.geo_task_id ?? "-"}</td>
       <td>{result.visibility_score}</td>
       <td>{result.sentiment}</td>
-      <td>{result.accuracy}</td>
-      <td>
-        {result.processed_content != null
-          ? result.processed_content.length > 80
-            ? result.processed_content.slice(0, 80) + "…"
-            : result.processed_content
-          : "-"}
-      </td>
-      <td
-        title={
-          result.query_result != null
-            ? JSON.stringify(result.query_result)
-            : undefined
-        }
-      >
-        {formatCell(result.query_result)}
-      </td>
       <td>{result.brand_mentioned ? t`Yes` : t`No`}</td>
-      <td>{formatCell(result.brand_hits)}</td>
       <td>{result.brand_rank ?? "-"}</td>
       <td>
         {result.is_first_recommendation == null
@@ -86,14 +193,16 @@ function ResultRow({ result }: { result: GeoResultResponse }) {
       >
         {formatCell(result.product_keyword_mentions)}
       </td>
-      <td
-        title={
-          result.sources != null ? JSON.stringify(result.sources) : undefined
-        }
-      >
-        {formatCell(result.sources)}
+      <td>
+        <SourcesCell value={result.sources} />
       </td>
       <td>{result.collected_at ?? "-"}</td>
+      <td>
+        <ExpandableCell value={result.processed_content} />
+      </td>
+      <td>
+        <ExpandableCell value={result.query_result} />
+      </td>
     </tr>
   );
 }
@@ -102,7 +211,7 @@ export const GeoTaskResultsPage = () => {
   const { params, router } = useRouter();
   const taskId = params?.taskId ?? "";
   const [page, setPage] = useState(1);
-  const pageSize = 20;
+  const [pageSize, setPageSize] = useState(20);
   const [batchId, setBatchId] = useState<number | undefined>(undefined);
 
   const { data, isLoading, error } = useGetGeoTaskResultsQuery(
@@ -143,7 +252,7 @@ export const GeoTaskResultsPage = () => {
       </Flex>
 
       {taskId && (
-        <Flex mb="md" gap="sm" align="center">
+        <Flex mb="md" gap="md" align="center" wrap="wrap">
           <label className={CS.textSecondary}>{t`Batch ID (optional)`}</label>
           <input
             type="number"
@@ -156,6 +265,21 @@ export const GeoTaskResultsPage = () => {
             placeholder={t`All batches`}
             style={{ width: 120 }}
           />
+          <label className={CS.textSecondary}>{t`Page size`}</label>
+          <select
+            value={String(pageSize)}
+            onChange={(e) => {
+              setPageSize(parseInt(e.target.value, 10));
+              setPage(1);
+            }}
+            style={{ width: 100 }}
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
         </Flex>
       )}
 
@@ -169,18 +293,12 @@ export const GeoTaskResultsPage = () => {
             <table className={AdminS.ContentTable}>
               <thead>
                 <tr>
-                  <th>ID</th>
                   <th>{t`Batch`}</th>
                   <th>{t`Query`}</th>
                   <th>{t`Engine`}</th>
-                  <th>{t`Task ID`}</th>
                   <th>{t`Visibility`}</th>
                   <th>{t`Sentiment`}</th>
-                  <th>{t`Accuracy`}</th>
-                  <th>{t`Processed content`}</th>
-                  <th>{t`Query result`}</th>
                   <th>{t`Brand mentioned`}</th>
-                  <th>{t`Brand hits`}</th>
                   <th>{t`Brand rank`}</th>
                   <th>{t`First recommendation`}</th>
                   <th>{t`In top 3`}</th>
@@ -188,6 +306,8 @@ export const GeoTaskResultsPage = () => {
                   <th>{t`Product keyword mentions`}</th>
                   <th>{t`Sources`}</th>
                   <th>{t`Collected at`}</th>
+                  <th>{t`Processed content`}</th>
+                  <th>{t`Query result`}</th>
                 </tr>
               </thead>
               <tbody>

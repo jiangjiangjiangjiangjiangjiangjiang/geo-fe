@@ -141,7 +141,7 @@ export async function loadLocalization(locale) {
                 console.log(`[i18n] Adding fallback translation for "GeoTask"`);
                 translations["GeoTask"] = {
                   msgid: "GeoTask",
-                  msgstr: ["Geo任务"],
+                  msgstr: ["GEO管理"],
                 };
               }
               if (!hasCreateNewGeoTask) {
@@ -343,7 +343,7 @@ function setLanguage(translationsObject) {
       );
       translations["GeoTask"] = {
         msgid: "GeoTask",
-        msgstr: ["Geo任务"],
+        msgstr: ["GEO管理"],
       };
     }
     if (!("Create a new geo task" in translations)) {
@@ -463,7 +463,7 @@ function setLanguage(translationsObject) {
               msgstr: ["创建Geo任务"],
             },
             Execute: { msgid: "Execute", msgstr: ["执行"] },
-            GeoTask: { msgid: "GeoTask", msgstr: ["Geo任务"] },
+            GeoTask: { msgid: "GeoTask", msgstr: ["GEO管理"] },
             "Create a new geo task": {
               msgid: "Create a new geo task",
               msgstr: ["创建新的Geo任务"],
@@ -685,7 +685,7 @@ function addMsgIds(translationsObject) {
       "Geo Tasks": { msgid: "Geo Tasks", msgstr: ["Geo任务"] },
       "Create Geo Task": { msgid: "Create Geo Task", msgstr: ["创建Geo任务"] },
       Execute: { msgid: "Execute", msgstr: ["执行"] },
-      GeoTask: { msgid: "GeoTask", msgstr: ["Geo任务"] },
+      GeoTask: { msgid: "GeoTask", msgstr: ["GEO管理"] },
       "Create a new geo task": {
         msgid: "Create a new geo task",
         msgstr: ["创建新的Geo任务"],

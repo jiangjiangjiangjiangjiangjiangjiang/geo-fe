@@ -217,7 +217,7 @@ export const geoTaskApi = Api.injectEndpoints({
     >({
       query: (body: ExecuteGeoTaskRequest) => ({
         method: "POST",
-        url: "/api/geo-task/execute",
+        url: "/api/geo-task/execute-v2",
         body,
       }),
     }),
