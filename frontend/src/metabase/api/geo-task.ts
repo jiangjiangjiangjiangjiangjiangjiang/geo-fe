@@ -99,6 +99,33 @@ export interface Category {
   competitors: string[];
 }
 
+export interface GeoCompetitorAnalysis {
+  name?: string;
+  rank?: number | null;
+  in_top3?: boolean | null;
+  mentioned?: boolean;
+  brand_mentions?: {
+    hits?: unknown[];
+    mentioned?: boolean;
+  };
+  keyword_mentions?: Record<string, boolean>;
+  selling_point_mentions?: Record<string, boolean>;
+  is_first_recommendation?: boolean | null;
+  product_keyword_mentions?: Record<string, boolean>;
+}
+
+export interface GeoResultMetadata {
+  source?: string;
+  category?: string | null;
+  len_html?: number;
+  len_text?: number;
+  collector_ts?: string;
+  recommendations?: unknown[];
+  analysis_version?: string;
+  all_brand_analysis?: unknown[];
+  competitor_analyses?: GeoCompetitorAnalysis[];
+}
+
 export interface GetCategoriesResponse {
   success: boolean;
   categories: Category[];
@@ -131,7 +158,7 @@ export interface GeoResultResponse {
   selling_point_mentions: unknown;
   product_keyword_mentions: unknown;
   sources: unknown;
-  metadata: unknown;
+  metadata: GeoResultMetadata | null;
   collected_at: string | null;
   processed_at: string | null;
   created_at: string | null;
