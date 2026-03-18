@@ -16,11 +16,27 @@ import CS from "metabase/css/core/index.css";
 import { useRouter } from "metabase/router";
 import { Button, Flex } from "metabase/ui";
 
+import { ScheduleConfigModal } from "./ScheduleConfigModal";
+
 const listStyle = {
   margin: 0,
   paddingLeft: "1em",
   listStyle: "none" as const,
 };
+
+function formatScheduleCronForDisplay(cron?: string | null): string {
+  if (!cron || !cron.trim()) {
+    return "-";
+  }
+
+  const trimmedCron = cron.trim();
+  const hourlyMatch = trimmedCron.match(/^0 \*\/(\d{1,2}) \* \* \*$/);
+  if (hourlyMatch) {
+    return `1次/${hourlyMatch[1]}小时`;
+  }
+
+  return trimmedCron;
+}
 
 function SellingPointsCell({ task }: { task: GeoTask }) {
   const items = task.selling_point_keywords?.filter(Boolean) ?? [];
@@ -82,7 +98,7 @@ export const GeoTaskList = ({
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  const { data, isLoading, error } = useListGeoTasksQuery({
+  const { data, isLoading, error, refetch } = useListGeoTasksQuery({
     page,
     page_size: pageSize,
   });
@@ -91,6 +107,7 @@ export const GeoTaskList = ({
   const [updateGeoTask, { isLoading: isUpdating }] = useUpdateGeoTaskMutation();
   const [executingId, setExecutingId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [scheduleTask, setScheduleTask] = useState<GeoTask | null>(null);
   const [sendToast] = useToast();
   const { locale } = useLocale();
   const { router } = useRouter();
@@ -115,8 +132,10 @@ export const GeoTaskList = ({
   const headerAiPlatform = (isZh ? "AI平台" : null) ?? t`AI Platform`;
   const headerAiMode = (isZh ? "AI模式" : null) ?? t`AI Mode`;
   const headerEnabled = (isZh ? "启用" : null) ?? t`Enabled`;
+  const headerScheduleCron = (isZh ? "定时表达式" : null) ?? t`Schedule Cron`;
   const headerActions = (isZh ? "动作" : null) ?? t`Actions`;
   const headerTaskResult = (isZh ? "任务结果" : null) ?? t`Task Result`;
+  const labelSchedule = (isZh ? "定时" : null) ?? t`Schedule`;
   const labelEnable = (isZh ? "启用" : null) ?? t`Enable`;
   const labelDisable = (isZh ? "禁用" : null) ?? t`Disable`;
   const labelExecute = (isZh ? "执行" : null) ?? t`Execute`;
@@ -208,6 +227,7 @@ export const GeoTaskList = ({
                   <th>{headerAiPlatform}</th>
                   <th>{headerAiMode}</th>
                   <th>{headerEnabled}</th>
+                  <th>{headerScheduleCron}</th>
                   <th>{headerActions}</th>
                   <th>{headerTaskResult}</th>
                 </tr>
@@ -233,8 +253,20 @@ export const GeoTaskList = ({
                     <td>{task.ai_model ?? "-"}</td>
                     <td>{task.ai_mode ?? "-"}</td>
                     <td>{task.enabled ? labelYes : labelNo}</td>
+                    <td>{formatScheduleCronForDisplay(task.schedule_cron)}</td>
                     <td>
                       <Flex gap="xs" wrap="wrap" align="center">
+                        <Button
+                          size="sm"
+                          variant="subtle"
+                          onClick={() => setScheduleTask(task)}
+                          disabled={
+                            (isUpdating && updatingId === task.id) ||
+                            (isExecuting && executingId === task.id)
+                          }
+                        >
+                          {labelSchedule}
+                        </Button>
                         {task.enabled ? (
                           <Button
                             size="sm"
@@ -330,6 +362,14 @@ export const GeoTaskList = ({
             </div>
           )}
         </div>
+        <ScheduleConfigModal
+          task={scheduleTask}
+          opened={scheduleTask != null}
+          onSaved={() => {
+            void refetch();
+          }}
+          onClose={() => setScheduleTask(null)}
+        />
       </>
     </LoadingAndErrorWrapper>
   );

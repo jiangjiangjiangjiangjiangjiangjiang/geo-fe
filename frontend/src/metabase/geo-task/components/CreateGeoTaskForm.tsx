@@ -26,12 +26,14 @@ import {
   Icon,
   Paper,
   Stack,
+  Text,
   TextInput,
   Title,
 } from "metabase/ui";
 
 /** AI模式枚举: Search */
 const AI_MODE_OPTIONS = [{ value: "Search", label: "Search" }];
+const MAX_COMPETITORS = 10;
 
 /** 任务品牌名枚举: 高洁丝、好奇 */
 const BRAND_OPTIONS = [
@@ -66,10 +68,20 @@ function hoursToCron(hours: number): string {
 
 /** 竞品：品牌与产品关键词 1:1 成对，每行一个品牌 + 对应产品关键词 */
 function ComparisonBrandProductPairs() {
-  const { values, setFieldValue } = useFormikContext<FormValues>();
+  const { errors, submitCount, values, setFieldValue } =
+    useFormikContext<FormValues>();
   const brands = values.comparison_brand_names || [""];
   const keywords = values.comparison_product_keywords || [""];
   const length = Math.max(brands.length, keywords.length, 1);
+  const hasReachedMax = length >= MAX_COMPETITORS;
+  const fieldError =
+    submitCount > 0
+      ? typeof errors.comparison_brand_names === "string"
+        ? errors.comparison_brand_names
+        : typeof errors.comparison_product_keywords === "string"
+          ? errors.comparison_product_keywords
+          : undefined
+      : undefined;
   const brandsPadded = [...brands, ...Array(length - brands.length).fill("")];
   const keywordsPadded = [
     ...keywords,
@@ -77,6 +89,9 @@ function ComparisonBrandProductPairs() {
   ];
 
   const addRow = () => {
+    if (hasReachedMax) {
+      return;
+    }
     setFieldValue("comparison_brand_names", [...brandsPadded, ""]);
     setFieldValue("comparison_product_keywords", [...keywordsPadded, ""]);
   };
@@ -110,7 +125,8 @@ function ComparisonBrandProductPairs() {
   return (
     <FormField
       title={t`Comparison Brands & Product Keywords`}
-      description={t`One row per competitor: brand name + its product keywords. Click + to add a row.`}
+      description={t`One row per competitor: brand name + its product keywords. Click + to add a row. Up to 10 competitors.`}
+      error={fieldError}
       mb="xs"
     >
       <Stack gap="xs">
@@ -135,6 +151,7 @@ function ComparisonBrandProductPairs() {
               onClick={addRow}
               title={t`Add row`}
               aria-label={t`Add row`}
+              disabled={hasReachedMax}
             >
               <Icon name="add" />
             </Button>
@@ -152,6 +169,9 @@ function ComparisonBrandProductPairs() {
             )}
           </Flex>
         ))}
+        <Text size="sm" c={hasReachedMax ? "error" : "text-medium"}>
+          {t`Competitors added: ${length}/${MAX_COMPETITORS}`}
+        </Text>
       </Stack>
     </FormField>
   );
@@ -234,7 +254,6 @@ export const CreateGeoTaskForm = ({
   onCancel,
 }: CreateGeoTaskFormProps) => {
   const [createGeoTask, { isLoading }] = useCreateGeoTaskMutation();
-
   const geoTaskSchema = useMemo(
     () =>
       Yup.object({
@@ -247,9 +266,13 @@ export const CreateGeoTaskForm = ({
         platform_name: Yup.string().nullable(),
         ai_mode: Yup.string().nullable(),
         product_brand: Yup.string().nullable(),
-        comparison_brand_names: Yup.array().of(Yup.string()),
+        comparison_brand_names: Yup.array()
+          .of(Yup.string())
+          .max(MAX_COMPETITORS, t`At most 10 competitors are supported`),
         product_keywords: Yup.string().nullable(),
-        comparison_product_keywords: Yup.array().of(Yup.string()),
+        comparison_product_keywords: Yup.array()
+          .of(Yup.string())
+          .max(MAX_COMPETITORS, t`At most 10 competitors are supported`),
         selling_point_keywords: Yup.array().of(Yup.string()),
         schedule_hours: Yup.number()
           .nullable()
@@ -279,8 +302,14 @@ export const CreateGeoTaskForm = ({
   );
 
   const handleSubmit = async (values: FormValues) => {
-    const brands = values.comparison_brand_names || [];
-    const keywords = values.comparison_product_keywords || [];
+    const brands = (values.comparison_brand_names || []).slice(
+      0,
+      MAX_COMPETITORS,
+    );
+    const keywords = (values.comparison_product_keywords || []).slice(
+      0,
+      MAX_COMPETITORS,
+    );
     const len = Math.max(brands.length, keywords.length);
     const comparison_brands: Record<string, string[]> = {};
     for (let i = 0; i < len; i++) {

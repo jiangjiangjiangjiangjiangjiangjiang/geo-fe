@@ -13,15 +13,31 @@ import {
   Button,
   Flex,
   Modal,
+  NumberInput,
   Stack,
   Text,
-  TextInput,
 } from "metabase/ui";
 
 interface ScheduleConfigModalProps {
   task: GeoTask | null;
   opened: boolean;
   onClose: () => void;
+  onSaved?: () => void;
+}
+
+function hoursToCron(hours: number): string {
+  return `0 */${hours} * * *`;
+}
+
+function cronToHours(cron?: string | null): number | null {
+  if (!cron) {
+    return null;
+  }
+  const match = cron.trim().match(/^0 \*\/(\d{1,2}) \* \* \*$/);
+  if (!match) {
+    return null;
+  }
+  return Number(match[1]);
 }
 
 /** Extract a single error message string from API response detail (string or array). */
@@ -54,6 +70,7 @@ export function ScheduleConfigModal({
   task,
   opened,
   onClose,
+  onSaved,
 }: ScheduleConfigModalProps) {
   const taskId = task?.id ?? "";
   const { data: schedule, isLoading } = useGetTaskScheduleQuery(taskId, {
@@ -68,31 +85,54 @@ export function ScheduleConfigModal({
   const executionPlanLabel =
     (locale && locale.startsWith("zh") ? "执行计划" : null) ??
     t`Execution plan`;
-  const [cronInput, setCronInput] = useState("");
+  const scheduleTitle =
+    (locale && locale.startsWith("zh") ? "日程" : null) ?? t`Schedule`;
+  const frequencyLabel =
+    (locale && locale.startsWith("zh") ? "Search Frequency (hours)" : null) ??
+    t`Search Frequency (hours)`;
+  const [hoursInput, setHoursInput] = useState<number | string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [hasUnsupportedCron, setHasUnsupportedCron] = useState(false);
+
+  const cronValue =
+    typeof hoursInput === "number" && hoursInput >= 1 && hoursInput <= 24
+      ? hoursToCron(hoursInput)
+      : "";
 
   const editRunTimes = useMemo(
-    () => (cronInput.trim() ? getNextRunTimes(cronInput.trim(), 10) : []),
-    [cronInput],
+    () => (cronValue ? getNextRunTimes(cronValue, 10) : []),
+    [cronValue],
   );
 
   useEffect(() => {
     if (schedule) {
-      setCronInput(schedule.schedule_cron ?? "");
+      const parsedHours = cronToHours(schedule.schedule_cron);
+      setHoursInput(parsedHours ?? "");
+      setHasUnsupportedCron(
+        schedule.schedule_cron != null &&
+          schedule.schedule_cron.trim() !== "" &&
+          parsedHours == null,
+      );
     }
   }, [schedule]);
 
   useEffect(() => {
     if (!opened) {
       setErrorMessage(null);
+      setHasUnsupportedCron(false);
     }
   }, [opened]);
 
   const handleSave = async () => {
     setErrorMessage(null);
-    if (!taskId || !cronInput.trim()) {
+    if (
+      !taskId ||
+      typeof hoursInput !== "number" ||
+      hoursInput < 1 ||
+      hoursInput > 24
+    ) {
       sendToast({
-        message: t`Cron expression is required`,
+        message: t`Please enter a whole number from 1 to 24`,
         icon: "warning_triangle_filled",
         iconColor: "var(--mb-color-warning)",
       });
@@ -101,9 +141,10 @@ export function ScheduleConfigModal({
     try {
       await setSchedule({
         taskId,
-        body: { schedule_cron: cronInput.trim() },
+        body: { schedule_cron: hoursToCron(hoursInput) },
       }).unwrap();
       sendToast({ message: t`Schedule updated`, icon: "check" });
+      onSaved?.();
       onClose();
     } catch (err: unknown) {
       let detail: unknown = null;
@@ -146,6 +187,11 @@ export function ScheduleConfigModal({
               {errorMessage}
             </Alert>
           )}
+          {hasUnsupportedCron && (
+            <Alert color="warning" title={t`Unsupported existing schedule`}>
+              {t`The current cron expression is not in the every-N-hours format. Enter a value from 1 to 24 to replace it.`}
+            </Alert>
+          )}
           <Text size="sm" c="dimmed">
             {t`Task`}: {task.task_name ?? task.query_text ?? task.id}
           </Text>
@@ -155,20 +201,23 @@ export function ScheduleConfigModal({
           ) : (
             <>
               <Text size="sm" fw={600}>
-                {t`Edit schedule`}
+                {scheduleTitle}
               </Text>
-              <TextInput
-                label={t`Cron expression`}
-                description={t`e.g. 0 */6 * * * for every 6 hours`}
-                value={cronInput}
-                onChange={(e) => setCronInput(e.target.value)}
-                placeholder="0 */6 * * *"
+              <NumberInput
+                label={frequencyLabel}
+                placeholder={t`e.g. 6 for every 6 hours (1–24)`}
+                min={1}
+                max={24}
+                allowDecimal={false}
+                clampBehavior="strict"
+                value={hoursInput}
+                onChange={setHoursInput}
               />
-              {cronInput.trim() && (
+              {cronValue && (
                 <Stack gap="xs">
                   <Text size="sm" c="dimmed">
                     {executionPlanLabel}:{" "}
-                    {getScheduleExplanation(cronInput.trim()) ??
+                    {getScheduleExplanation(cronValue) ??
                       t`Invalid cron expression`}
                   </Text>
                   {editRunTimes.length > 0 && (

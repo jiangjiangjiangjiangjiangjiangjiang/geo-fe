@@ -12,24 +12,64 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useRouter } from "metabase/router";
 import { Box, Button, Flex, Icon, Title } from "metabase/ui";
 
-function SourceRow({ item }: { item: SourceItem }) {
+interface GroupedSourceItem {
+  result_id: number;
+  sources: SourceItem[];
+}
+
+function groupSourcesByResultId(items: SourceItem[]): GroupedSourceItem[] {
+  const groupedItems = new Map<number, GroupedSourceItem>();
+
+  items.forEach((item) => {
+    const existingGroup = groupedItems.get(item.result_id);
+
+    if (existingGroup) {
+      existingGroup.sources.push(item);
+      return;
+    }
+
+    groupedItems.set(item.result_id, {
+      result_id: item.result_id,
+      sources: [item],
+    });
+  });
+
+  return Array.from(groupedItems.values());
+}
+
+function SourceRow({ item }: { item: GroupedSourceItem }) {
   return (
     <tr>
       <td>{item.result_id}</td>
-      <td>{item.title ?? "-"}</td>
       <td>
-        {item.url ? (
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={CS.link}
-          >
-            {item.url.length > 60 ? item.url.slice(0, 60) + "…" : item.url}
-          </a>
-        ) : (
-          "-"
-        )}
+        <div className={cx(CS.flex, CS.flexColumn)} style={{ gap: 12 }}>
+          {item.sources.map((source, index) => (
+            <div key={`${source.title ?? "title"}-${index}`}>
+              {source.title ?? "-"}
+            </div>
+          ))}
+        </div>
+      </td>
+      <td>
+        <div className={cx(CS.flex, CS.flexColumn)} style={{ gap: 12 }}>
+          {item.sources.map((source, index) =>
+            source.url ? (
+              <a
+                key={`${source.url}-${index}`}
+                href={source.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={CS.link}
+              >
+                {source.url.length > 60
+                  ? source.url.slice(0, 60) + "…"
+                  : source.url}
+              </a>
+            ) : (
+              <div key={`empty-url-${index}`}>-</div>
+            ),
+          )}
+        </div>
       </td>
     </tr>
   );
@@ -59,6 +99,7 @@ export const GeoTaskSourcesPage = () => {
   };
 
   const items = data?.items ?? [];
+  const groupedItems = groupSourcesByResultId(items);
   const total = data?.total ?? 0;
   const totalPages = data?.total_pages ?? 0;
   const shouldShowPagination =
@@ -98,7 +139,7 @@ export const GeoTaskSourcesPage = () => {
 
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
         <div className={cx(CS.bordered, CS.rounded, CS.full)}>
-          {items.length === 0 ? (
+          {groupedItems.length === 0 ? (
             <div className={cx(CS.flex, CS.layoutCentered, CS.p4)}>
               <p className={CS.textSecondary}>{t`No sources found`}</p>
             </div>
@@ -112,11 +153,8 @@ export const GeoTaskSourcesPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {items.map((item, index) => (
-                  <SourceRow
-                    key={`${item.result_id}-${item.url ?? ""}-${index}`}
-                    item={item}
-                  />
+                {groupedItems.map((item) => (
+                  <SourceRow key={String(item.result_id)} item={item} />
                 ))}
               </tbody>
             </table>
