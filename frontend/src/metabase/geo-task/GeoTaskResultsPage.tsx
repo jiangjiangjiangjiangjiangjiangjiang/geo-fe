@@ -1,4 +1,5 @@
 import cx from "classnames";
+import dayjs from "dayjs";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import * as XLSX from "xlsx";
@@ -16,7 +17,7 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useRouter } from "metabase/router";
-import { Box, Button, Flex, Icon, Popover, Title } from "metabase/ui";
+import { Box, Button, Flex, Icon, Modal, Popover, Title } from "metabase/ui";
 
 const EMPTY_RESULTS: GeoResultResponse[] = [];
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200, 500, 1000];
@@ -28,36 +29,65 @@ const competitorListStyle = {
 };
 
 const competitorCardStyle = {
-  padding: "8px 10px",
+  display: "flex",
+  alignItems: "center",
+  flexWrap: "wrap" as const,
+  gap: 6,
+  padding: "6px 8px",
   border: "1px solid var(--mb-color-border)",
-  borderRadius: 8,
+  borderRadius: 999,
   background: "var(--mb-color-bg-light)",
-};
-
-const competitorNameStyle = {
-  fontWeight: 700,
-  marginBottom: 6,
-  lineHeight: 1.3,
-  wordBreak: "break-word" as const,
+  maxWidth: "100%",
+  width: "100%",
 };
 
 const competitorMetricRowStyle = {
-  display: "flex",
+  display: "inline-flex",
+  alignItems: "center",
   flexWrap: "wrap" as const,
-  gap: 6,
-  marginTop: 4,
+  gap: 4,
 };
 
 const competitorMetricStyle = {
   display: "inline-flex",
   alignItems: "center",
-  padding: "2px 8px",
+  padding: "1px 6px",
   borderRadius: 999,
   background: "white",
   border: "1px solid var(--mb-color-border)",
-  fontSize: 12,
+  fontSize: 11,
   lineHeight: 1.4,
   whiteSpace: "nowrap" as const,
+};
+
+const competitorNameStyle = {
+  fontWeight: 700,
+  lineHeight: 1.3,
+  wordBreak: "break-word" as const,
+};
+
+const mentionListStyle = {
+  display: "flex",
+  flexWrap: "wrap" as const,
+  gap: 6,
+};
+
+const mentionTagStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "2px 8px",
+  borderRadius: 999,
+  background: "var(--mb-color-bg-light)",
+  border: "1px solid var(--mb-color-border)",
+  fontSize: 12,
+  lineHeight: 1.4,
+  wordBreak: "break-word" as const,
+};
+
+const queryResultListStyle = {
+  display: "flex",
+  flexDirection: "column" as const,
+  gap: 4,
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -106,6 +136,43 @@ function formatJsonValue(value: unknown): string {
   return String(value);
 }
 
+function formatCollectedAt(value: string | null | undefined): string {
+  if (!value) {
+    return "-";
+  }
+
+  const formatted = dayjs(value);
+  return formatted.isValid() ? formatted.format("YYYY/MM/DD HH:mm") : value;
+}
+
+function getMentionEntries(
+  value: unknown,
+): Array<{ keyword: string; mentioned: boolean | null }> {
+  if (!isRecord(value)) {
+    return [];
+  }
+
+  return Object.entries(value).map(([keyword, mentioned]) => ({
+    keyword,
+    mentioned: typeof mentioned === "boolean" ? mentioned : null,
+  }));
+}
+
+function formatMentionValueForExport(value: unknown): string {
+  const entries = getMentionEntries(value);
+
+  if (entries.length === 0) {
+    return "";
+  }
+
+  return entries
+    .map(({ keyword, mentioned }) => {
+      const label = mentioned == null ? "-" : mentioned ? t`Yes` : t`No`;
+      return `${keyword}: ${label}`;
+    })
+    .join("; ");
+}
+
 function getCompetitorAnalyses(
   metadata: GeoResultMetadata | null,
 ): GeoCompetitorAnalysis[] {
@@ -139,6 +206,40 @@ function getProductMentionTitle(
     .join(", ");
 }
 
+function MentionSummaryCell({ value }: { value: unknown }) {
+  const entries = getMentionEntries(value);
+
+  if (entries.length === 0) {
+    return <span>-</span>;
+  }
+
+  const mentionedKeywords = entries.filter((entry) => entry.mentioned);
+  const title = entries
+    .map(({ keyword, mentioned }) => {
+      const label = mentioned == null ? "-" : mentioned ? t`Yes` : t`No`;
+      return `${keyword}: ${label}`;
+    })
+    .join("\n");
+
+  if (mentionedKeywords.length === 0) {
+    return (
+      <span title={title} className={CS.textSecondary}>
+        {t`None mentioned`}
+      </span>
+    );
+  }
+
+  return (
+    <div style={mentionListStyle} title={title}>
+      {mentionedKeywords.map(({ keyword }) => (
+        <span key={keyword} style={mentionTagStyle}>
+          {keyword}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function formatCompetitorAnalysesForExport(
   metadata: GeoResultMetadata | null,
 ): string {
@@ -164,35 +265,6 @@ function formatCompetitorAnalysesForExport(
         )}`,
       ].join(", ");
     })
-    .join(" | ");
-}
-
-function formatSourcesForExport(value: unknown): string {
-  if (value == null) {
-    return "";
-  }
-
-  const items = Array.isArray(value) ? value : [value];
-  const sources = items.filter(isSourceLike);
-
-  if (sources.length === 0) {
-    return formatCell(value);
-  }
-
-  return sources
-    .map((source) => {
-      const title =
-        typeof source.title === "string" && source.title.trim() !== ""
-          ? source.title
-          : "";
-      const url =
-        typeof source.url === "string" && source.url.trim() !== ""
-          ? source.url
-          : "";
-
-      return [title, url].filter(Boolean).join(" - ");
-    })
-    .filter(Boolean)
     .join(" | ");
 }
 
@@ -226,18 +298,63 @@ function formatExpandedValue(value: unknown): string {
   return String(value);
 }
 
+function formatQueryResultPreview(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) => {
+      if (!isRecord(item)) {
+        return formatCell(item);
+      }
+
+      const name =
+        typeof item.item === "string" && item.item.trim() !== ""
+          ? item.item.trim()
+          : typeof item.name === "string" && item.name.trim() !== ""
+            ? item.name.trim()
+            : null;
+      const rank = typeof item.rank === "number" ? item.rank : null;
+
+      if (name && rank != null) {
+        return `${rank}. ${name}`;
+      }
+
+      if (name) {
+        return `${index + 1}. ${name}`;
+      }
+
+      return formatCell(item);
+    });
+  }
+
+  if (isRecord(value)) {
+    return Object.entries(value).map(([key, itemValue]) => {
+      const formattedValue =
+        typeof itemValue === "object"
+          ? formatCell(itemValue)
+          : String(itemValue);
+      return `${key}: ${formattedValue}`;
+    });
+  }
+
+  if (value == null || value === "") {
+    return [];
+  }
+
+  return [String(value)];
+}
+
 function ExpandableCell({
   value,
   emptyLabel = "-",
+  buttonLabel = t`View details`,
 }: {
   value: unknown;
   emptyLabel?: string;
+  buttonLabel?: string;
 }) {
   if (value == null || value === "") {
     return <span>{emptyLabel}</span>;
   }
 
-  const preview = formatCell(value);
   const content = formatExpandedValue(value);
 
   return (
@@ -254,7 +371,7 @@ function ExpandableCell({
             cursor: "pointer",
           }}
         >
-          {preview.length > 60 ? preview.slice(0, 60) + "…" : preview}
+          {buttonLabel}
         </button>
       </Popover.Target>
       <Popover.Dropdown>
@@ -271,68 +388,6 @@ function ExpandableCell({
         </div>
       </Popover.Dropdown>
     </Popover>
-  );
-}
-
-type SourceLike = {
-  title?: unknown;
-  url?: unknown;
-};
-
-function isSourceLike(value: unknown): value is SourceLike {
-  return isRecord(value);
-}
-
-function SourcesCell({ value }: { value: unknown }) {
-  if (value == null) {
-    return <span>-</span>;
-  }
-
-  const items = Array.isArray(value) ? value : [value];
-  const sources = items.filter(isSourceLike);
-
-  if (sources.length === 0) {
-    return <span>{formatCell(value)}</span>;
-  }
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-      }}
-    >
-      {sources.map((source, index) => {
-        const title =
-          typeof source.title === "string" && source.title.trim() !== ""
-            ? source.title
-            : null;
-        const url =
-          typeof source.url === "string" && source.url.trim() !== ""
-            ? source.url
-            : null;
-        const label = title ?? url ?? "-";
-
-        return url ? (
-          <a
-            key={`${url}-${index}`}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={CS.link}
-            style={{ wordBreak: "break-word" }}
-            title={url}
-          >
-            {index + 1}. {label}
-          </a>
-        ) : (
-          <span key={`${label}-${index}`} style={{ wordBreak: "break-word" }}>
-            {index + 1}. {label}
-          </span>
-        );
-      })}
-    </div>
   );
 }
 
@@ -370,8 +425,6 @@ function CompetitorAnalysesCell({
                 value={formatBoolean(brandMentioned)}
               />
               <MetricTag label="排名" value={analysis.rank ?? "-"} />
-            </div>
-            <div style={competitorMetricRowStyle}>
               <MetricTag label="前3" value={formatBoolean(analysis.in_top3)} />
               <MetricTag
                 label="产品提及"
@@ -387,13 +440,71 @@ function CompetitorAnalysesCell({
   );
 }
 
+function QueryResultCell({ value }: { value: unknown }) {
+  const lines = formatQueryResultPreview(value);
+
+  if (lines.length === 0) {
+    return <span>-</span>;
+  }
+
+  return (
+    <div style={queryResultListStyle}>
+      {lines.slice(0, 5).map((line, index) => (
+        <div key={`${line}-${index}`} style={{ wordBreak: "break-word" }}>
+          {line}
+        </div>
+      ))}
+      {lines.length > 5 && (
+        <ExpandableCell value={value} buttonLabel={t`View more`} />
+      )}
+    </div>
+  );
+}
+
+function ProcessedContentCell({ value }: { value: unknown }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (value == null || value === "") {
+    return <span>-</span>;
+  }
+
+  return (
+    <>
+      <Button
+        variant="subtle"
+        size="compact-sm"
+        onClick={() => setIsOpen(true)}
+      >
+        {t`查看全文`}
+      </Button>
+      <Modal
+        opened={isOpen}
+        onClose={() => setIsOpen(false)}
+        title={t`Processed content`}
+        size="xl"
+      >
+        <div
+          style={{
+            maxHeight: "70vh",
+            overflow: "auto",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+          }}
+        >
+          {formatExpandedValue(value)}
+        </div>
+      </Modal>
+    </>
+  );
+}
+
 function ResultRow({ result }: { result: GeoResultResponse }) {
   return (
     <tr>
       <td>{result.batch_id}</td>
+      <td>{formatCollectedAt(result.collected_at)}</td>
       <td>{result.query ?? "-"}</td>
       <td>{result.engine ?? "-"}</td>
-      <td>{result.visibility_score}</td>
       <td>{result.sentiment}</td>
       <td>{result.brand_mentioned ? t`Yes` : t`No`}</td>
       <td>{result.brand_rank ?? "-"}</td>
@@ -405,36 +516,20 @@ function ResultRow({ result }: { result: GeoResultResponse }) {
             : t`No`}
       </td>
       <td>{result.in_top3 == null ? "-" : result.in_top3 ? t`Yes` : t`No`}</td>
-      <td
-        title={
-          result.selling_point_mentions != null
-            ? JSON.stringify(result.selling_point_mentions)
-            : undefined
-        }
-      >
-        {formatCell(result.selling_point_mentions)}
+      <td>
+        <MentionSummaryCell value={result.selling_point_mentions} />
       </td>
-      <td
-        title={
-          result.product_keyword_mentions != null
-            ? JSON.stringify(result.product_keyword_mentions)
-            : undefined
-        }
-      >
-        {formatCell(result.product_keyword_mentions)}
+      <td>
+        <MentionSummaryCell value={result.product_keyword_mentions} />
       </td>
       <td>
         <CompetitorAnalysesCell metadata={result.metadata} />
       </td>
       <td>
-        <SourcesCell value={result.sources} />
-      </td>
-      <td>{result.collected_at ?? "-"}</td>
-      <td>
-        <ExpandableCell value={result.processed_content} />
+        <QueryResultCell value={result.query_result} />
       </td>
       <td>
-        <ExpandableCell value={result.query_result} />
+        <ProcessedContentCell value={result.processed_content} />
       </td>
     </tr>
   );
@@ -473,9 +568,9 @@ export const GeoTaskResultsPage = () => {
     () =>
       items.map((result) => ({
         [t`Batch`]: result.batch_id,
+        [t`Collected at`]: formatCollectedAt(result.collected_at),
         [t`Query`]: result.query ?? "",
         [t`Engine`]: result.engine ?? "",
-        [t`Visibility`]: result.visibility_score ?? "",
         [t`Sentiment`]: result.sentiment ?? "",
         [t`Brand mentioned`]: formatBoolean(result.brand_mentioned),
         [t`Brand rank`]: result.brand_rank ?? "",
@@ -483,19 +578,17 @@ export const GeoTaskResultsPage = () => {
           result.is_first_recommendation,
         ),
         [t`In top 3`]: formatBoolean(result.in_top3),
-        [t`Selling point mentions`]: formatJsonValue(
+        [t`Selling point mentions`]: formatMentionValueForExport(
           result.selling_point_mentions,
         ),
-        [t`Product keyword mentions`]: formatJsonValue(
+        [t`Product keyword mentions`]: formatMentionValueForExport(
           result.product_keyword_mentions,
         ),
         [t`Competitor analysis`]: formatCompetitorAnalysesForExport(
           result.metadata,
         ),
-        [t`Sources`]: formatSourcesForExport(result.sources),
-        [t`Collected at`]: result.collected_at ?? "",
-        [t`Processed content`]: formatJsonValue(result.processed_content),
         [t`Query result`]: formatJsonValue(result.query_result),
+        [t`Processed content`]: formatJsonValue(result.processed_content),
       })),
     [items],
   );
@@ -532,9 +625,9 @@ export const GeoTaskResultsPage = () => {
             variant="subtle"
             onClick={goBack}
           >
-            {t`Back to Geo tasks`}
+            {t`返回 GEO 任务`}
           </Button>
-          <Title order={1}>{t`Task results`}</Title>
+          <Title order={1}>{t`任务结果`}</Title>
         </Flex>
         <Button
           leftSection={<Icon name="download" />}
@@ -542,13 +635,13 @@ export const GeoTaskResultsPage = () => {
           onClick={handleExportExcel}
           disabled={!canExport}
         >
-          {t`Export data`}
+          {t`导出数据`}
         </Button>
       </Flex>
 
       {taskId && (
         <Flex mb="md" gap="md" align="center" wrap="wrap">
-          <label className={CS.textSecondary}>{t`Batch ID (optional)`}</label>
+          <label className={CS.textSecondary}>{t`批次 ID（可选）`}</label>
           <input
             type="number"
             value={batchId ?? ""}
@@ -557,10 +650,10 @@ export const GeoTaskResultsPage = () => {
               setBatchId(v === "" ? undefined : parseInt(v, 10));
               setPage(1);
             }}
-            placeholder={t`All batches`}
+            placeholder={t`全部批次`}
             style={{ width: 120 }}
           />
-          <label className={CS.textSecondary}>{t`Page size`}</label>
+          <label className={CS.textSecondary}>{t`每页条数`}</label>
           <select
             value={String(pageSize)}
             onChange={(e) => {
@@ -588,22 +681,20 @@ export const GeoTaskResultsPage = () => {
             <table className={AdminS.ContentTable}>
               <thead>
                 <tr>
-                  <th>{t`Batch`}</th>
-                  <th>{t`Query`}</th>
-                  <th>{t`Engine`}</th>
-                  <th>{t`Visibility`}</th>
-                  <th>{t`Sentiment`}</th>
-                  <th>{t`Brand mentioned`}</th>
-                  <th>{t`Brand rank`}</th>
-                  <th>{t`First recommendation`}</th>
-                  <th>{t`In top 3`}</th>
-                  <th>{t`Selling point mentions`}</th>
-                  <th>{t`Product keyword mentions`}</th>
-                  <th>{t`Competitor analysis`}</th>
-                  <th>{t`Sources`}</th>
-                  <th>{t`Collected at`}</th>
-                  <th>{t`Processed content`}</th>
-                  <th>{t`Query result`}</th>
+                  <th>{t`批次`}</th>
+                  <th>{t`采集时间`}</th>
+                  <th>{t`查询词`}</th>
+                  <th>{t`引擎`}</th>
+                  <th>{t`情感值`}</th>
+                  <th>{t`品牌提及`}</th>
+                  <th>{t`品牌排名`}</th>
+                  <th>{t`首推`}</th>
+                  <th>{t`是否前 3`}</th>
+                  <th>{t`卖点提及`}</th>
+                  <th>{t`产品关键词提及`}</th>
+                  <th>{t`竞品分析`}</th>
+                  <th>{t`查询结果`}</th>
+                  <th>{t`处理内容`}</th>
                 </tr>
               </thead>
               <tbody>
