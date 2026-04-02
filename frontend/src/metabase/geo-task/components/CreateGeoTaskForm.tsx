@@ -31,15 +31,7 @@ import {
   Title,
 } from "metabase/ui";
 
-/** AI模式枚举: Search */
-const AI_MODE_OPTIONS = [{ value: "Search", label: "Search" }];
 const MAX_COMPETITORS = 10;
-
-/** 任务品牌名枚举: 高洁丝、好奇 */
-const BRAND_OPTIONS = [
-  { value: "高洁丝", label: "高洁丝" },
-  { value: "好奇", label: "好奇" },
-];
 
 interface CreateGeoTaskFormProps {
   onSuccess?: () => void;
@@ -51,7 +43,7 @@ interface FormValues {
   query_text: string;
   platform_name: string | null;
   ai_mode: string | null;
-  product_brand: string | null;
+  product_brand: string;
   comparison_brand_names: string[];
   product_keywords: string;
   comparison_product_keywords: string[];
@@ -124,8 +116,8 @@ function ComparisonBrandProductPairs() {
 
   return (
     <FormField
-      title={t`Comparison Brands & Product Keywords`}
-      description={t`One row per competitor: brand name + its product keywords. Click + to add a row. Up to 10 competitors.`}
+      title={t`竞品品牌与产品关键词`}
+      description={t`每行填写一个竞品品牌及其对应产品关键词。点击 + 添加一行，最多支持 10 个竞品。`}
       error={fieldError}
       mb="xs"
     >
@@ -135,13 +127,13 @@ function ComparisonBrandProductPairs() {
             <TextInput
               value={brandsPadded[index]}
               onChange={(e) => updateBrand(index, e.target.value)}
-              placeholder={t`Brand name`}
+              placeholder={t`品牌名称`}
               style={{ flex: 1, minWidth: 120 }}
             />
             <TextInput
               value={keywordsPadded[index]}
               onChange={(e) => updateKeywords(index, e.target.value)}
-              placeholder={t`Product keywords for this brand`}
+              placeholder={t`该品牌的产品关键词`}
               style={{ flex: 1, minWidth: 160 }}
             />
             <Button
@@ -149,8 +141,8 @@ function ComparisonBrandProductPairs() {
               variant="filled"
               size="sm"
               onClick={addRow}
-              title={t`Add row`}
-              aria-label={t`Add row`}
+              title={t`添加一行`}
+              aria-label={t`添加一行`}
               disabled={hasReachedMax}
             >
               <Icon name="add" />
@@ -161,8 +153,8 @@ function ComparisonBrandProductPairs() {
                 variant="subtle"
                 size="sm"
                 onClick={() => removeRow(index)}
-                title={t`Remove row`}
-                aria-label={t`Remove row`}
+                title={t`删除一行`}
+                aria-label={t`删除一行`}
               >
                 <Icon name="close" />
               </Button>
@@ -170,7 +162,7 @@ function ComparisonBrandProductPairs() {
           </Flex>
         ))}
         <Text size="sm" c={hasReachedMax ? "error" : "text-medium"}>
-          {t`Competitors added: ${length}/${MAX_COMPETITORS}`}
+          {t`已添加竞品：${length}/${MAX_COMPETITORS}`}
         </Text>
       </Stack>
     </FormField>
@@ -225,8 +217,8 @@ function DynamicStringList({
               variant="filled"
               size="sm"
               onClick={add}
-              title={t`Add`}
-              aria-label={t`Add`}
+              title={t`添加`}
+              aria-label={t`添加`}
             >
               <Icon name="add" />
             </Button>
@@ -236,8 +228,8 @@ function DynamicStringList({
                 variant="subtle"
                 size="sm"
                 onClick={() => remove(index)}
-                title={t`Remove`}
-                aria-label={t`Remove`}
+                title={t`删除`}
+                aria-label={t`删除`}
               >
                 <Icon name="close" />
               </Button>
@@ -258,27 +250,29 @@ export const CreateGeoTaskForm = ({
     () =>
       Yup.object({
         task_name: Yup.string()
-          .required(t`Task name is required`)
-          .max(200, t`Task name must be 200 characters or less`),
+          .required(t`任务名称不能为空`)
+          .max(200, t`任务名称不能超过 200 个字符`),
         query_text: Yup.string()
           .nullable()
-          .max(500, t`Task question must be 500 characters or less`),
+          .max(500, t`任务问题不能超过 500 个字符`),
         platform_name: Yup.string().nullable(),
         ai_mode: Yup.string().nullable(),
-        product_brand: Yup.string().nullable(),
+        product_brand: Yup.string()
+          .nullable()
+          .max(200, t`品牌名称不能超过 200 个字符`),
         comparison_brand_names: Yup.array()
           .of(Yup.string())
-          .max(MAX_COMPETITORS, t`At most 10 competitors are supported`),
+          .max(MAX_COMPETITORS, t`最多支持 10 个竞品`),
         product_keywords: Yup.string().nullable(),
         comparison_product_keywords: Yup.array()
           .of(Yup.string())
-          .max(MAX_COMPETITORS, t`At most 10 competitors are supported`),
+          .max(MAX_COMPETITORS, t`最多支持 10 个竞品`),
         selling_point_keywords: Yup.array().of(Yup.string()),
         schedule_hours: Yup.number()
           .nullable()
-          .integer(t`Must be a whole number`)
-          .min(1, t`Must be at least 1 hour`)
-          .max(24, t`At most 24 hours (once per day)`),
+          .integer(t`请输入整数`)
+          .min(1, t`最小值为 1 小时`)
+          .max(24, t`最大值为 24 小时（每天一次）`),
         enabled: Yup.boolean(),
       }),
     [],
@@ -290,7 +284,7 @@ export const CreateGeoTaskForm = ({
       query_text: "",
       platform_name: null,
       ai_mode: null,
-      product_brand: null,
+      product_brand: "",
       comparison_brand_names: [""],
       product_keywords: "",
       comparison_product_keywords: [""],
@@ -374,6 +368,10 @@ function CreateGeoTaskFormInner({
     () => aiPlatforms.map((p) => ({ value: p.key, label: p.name })),
     [aiPlatforms],
   );
+  const aiModeOptions = useMemo(
+    () => [{ value: "Search", label: t`搜索` }],
+    [],
+  );
 
   return (
     <Form disabled={disabled}>
@@ -381,13 +379,13 @@ function CreateGeoTaskFormInner({
         {/* 基本信息 + AI */}
         <Paper p="md" radius="md" withBorder>
           <Stack gap="sm">
-            <Title order={5}>{t`Basic Info & AI`}</Title>
+            <Title order={5}>{t`基础信息与 AI 配置`}</Title>
             <Grid gutter="sm">
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <FormTextInput
                   name="task_name"
-                  label={t`Task Name`}
-                  placeholder={t`Task name`}
+                  label={t`任务名称`}
+                  placeholder={t`请输入任务名称`}
                   required
                   autoFocus
                 />
@@ -395,16 +393,16 @@ function CreateGeoTaskFormInner({
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <FormTextInput
                   name="query_text"
-                  label={t`Task Question`}
-                  placeholder={t`Enter task question`}
+                  label={t`任务问题`}
+                  placeholder={t`请输入任务问题`}
                   required
                 />
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <FormSelect
                   name="platform_name"
-                  label={t`AI Model`}
-                  placeholder={t`Select AI model`}
+                  label={t`AI 模型`}
+                  placeholder={t`请选择 AI 模型`}
                   data={aiModelOptions}
                   searchable
                 />
@@ -412,9 +410,9 @@ function CreateGeoTaskFormInner({
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <FormSelect
                   name="ai_mode"
-                  label={t`AI Mode`}
-                  placeholder={t`Select AI mode`}
-                  data={AI_MODE_OPTIONS}
+                  label={t`AI 模式`}
+                  placeholder={t`请选择 AI 模式`}
+                  data={aiModeOptions}
                   searchable
                 />
               </Grid.Col>
@@ -425,25 +423,24 @@ function CreateGeoTaskFormInner({
         {/* 我品：品牌与关键词单独成区 */}
         <Paper p="md" radius="md" withBorder>
           <Stack gap="sm">
-            <Title order={5}>{t`Our product (我品) — Brand & Keywords`}</Title>
-            <FormSelect
+            <Title order={5}>{t`我方产品信息`}</Title>
+            <FormTextInput
               name="product_brand"
-              label={t`Task Brand Name`}
-              placeholder={t`Select brand`}
-              data={BRAND_OPTIONS}
-              searchable
+              label={t`品牌名称`}
+              placeholder={t`请输入品牌名称`}
+              nullable
             />
             <FormTextInput
               name="product_keywords"
-              label={t`Product Keywords`}
-              placeholder={t`Enter product keywords`}
+              label={t`产品关键词`}
+              placeholder={t`请输入产品关键词`}
               nullable
             />
             <DynamicStringList
               name="selling_point_keywords"
-              title={t`Selling Point Keywords`}
-              description={t`Click + to add more.`}
-              placeholder={t`Keyword`}
+              title={t`卖点关键词`}
+              description={t`点击 + 添加更多关键词。`}
+              placeholder={t`请输入关键词`}
             />
           </Stack>
         </Paper>
@@ -451,7 +448,7 @@ function CreateGeoTaskFormInner({
         {/* 竞品：品牌与产品关键词 1:1 */}
         <Paper p="md" radius="md" withBorder>
           <Stack gap="sm">
-            <Title order={5}>{t`Competitor (竞品)`}</Title>
+            <Title order={5}>{t`竞品信息`}</Title>
             <ComparisonBrandProductPairs />
           </Stack>
         </Paper>
@@ -459,11 +456,11 @@ function CreateGeoTaskFormInner({
         {/* 搜索频次：仅填写小时数，提交时转为 cron */}
         <Paper p="md" radius="md" withBorder>
           <Stack gap="sm">
-            <Title order={5}>{t`Schedule`}</Title>
+            <Title order={5}>{t`日程`}</Title>
             <FormNumberInput
               name="schedule_hours"
-              label={t`Search Frequency (hours)`}
-              placeholder={t`e.g. 6 for every 6 hours (1–24)`}
+              label={t`搜索频率（小时）`}
+              placeholder={t`例如填写 6，表示每 6 小时执行一次（1-24）`}
               min={1}
               max={24}
               nullable
@@ -475,10 +472,10 @@ function CreateGeoTaskFormInner({
           <FormErrorMessage inline />
           {onCancel && (
             <Button type="button" onClick={onCancel}>
-              {t`Cancel`}
+              {t`取消`}
             </Button>
           )}
-          <FormSubmitButton title={t`Execute`} disabled={disabled} />
+          <FormSubmitButton title={t`提交`} disabled={disabled} />
         </FormFooter>
       </Stack>
     </Form>

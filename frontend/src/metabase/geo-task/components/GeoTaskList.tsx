@@ -24,6 +24,26 @@ const listStyle = {
   listStyle: "none" as const,
 };
 
+const competitorListStyle = {
+  margin: 0,
+  padding: 0,
+  listStyle: "none" as const,
+};
+
+const competitorItemStyle = {
+  display: "block",
+  lineHeight: 1.6,
+};
+
+const competitorBrandStyle = {
+  fontWeight: 600,
+};
+
+const competitorKeywordsStyle = {
+  color: "var(--mb-color-text-medium)",
+  wordBreak: "break-word" as const,
+};
+
 function formatScheduleCronForDisplay(cron?: string | null): string {
   if (!cron || !cron.trim()) {
     return "-";
@@ -52,35 +72,60 @@ function SellingPointsCell({ task }: { task: GeoTask }) {
   );
 }
 
+interface CompetitorDisplayItem {
+  brand: string;
+  keywords: string[];
+}
+
+function getCompetitorDisplayItems(task: GeoTask): CompetitorDisplayItem[] {
+  const cb = task.comparison_brands;
+
+  if (cb == null || (Array.isArray(cb) && cb.length === 0)) {
+    return [];
+  }
+
+  return Array.isArray(cb)
+    ? cb.filter(Boolean).map((entry) => ({
+        brand: String(entry).trim(),
+        keywords: [],
+      }))
+    : Object.entries(cb).map(([brand, kw]) => ({
+        brand: brand.trim(),
+        keywords: Array.isArray(kw)
+          ? kw
+              .filter(Boolean)
+              .map((keyword) => String(keyword).trim())
+              .filter(Boolean)
+          : [],
+      }));
+}
+
 function ComparisonBrandsCell({
   task,
-  labelCompetitorBrand,
-  labelCompetitorKeywords,
+  brandKeywordSeparator,
 }: {
   task: GeoTask;
-  labelCompetitorBrand: string;
-  labelCompetitorKeywords: string;
+  brandKeywordSeparator: string;
 }) {
-  const cb = task.comparison_brands;
-  if (cb == null || (Array.isArray(cb) && cb.length === 0)) {
+  const items = getCompetitorDisplayItems(task).filter((item) => item.brand);
+
+  if (items.length === 0) {
     return <>-</>;
   }
-  const list: Array<{ brand: string; keywords: string }> = Array.isArray(cb)
-    ? cb
-        .filter(Boolean)
-        .map((entry) => ({ brand: String(entry), keywords: "" }))
-    : Object.entries(cb).map(([brand, kw]) => ({
-        brand,
-        keywords: Array.isArray(kw) ? kw.filter(Boolean).join(", ") : "",
-      }));
+
   return (
-    <ul style={listStyle}>
-      {list.map((item, i) => (
-        <li key={i}>
-          {labelCompetitorBrand}: {item.brand}
-          {item.keywords
-            ? `；${labelCompetitorKeywords}: ${item.keywords}`
-            : ""}
+    <ul style={competitorListStyle}>
+      {items.map((item, i) => (
+        <li key={`${item.brand}-${i}`} style={competitorItemStyle}>
+          <span style={competitorBrandStyle}>{item.brand}</span>
+          {item.keywords.length > 0 ? (
+            <>
+              <span>{brandKeywordSeparator}</span>
+              <span style={competitorKeywordsStyle}>
+                {item.keywords.join("、")}
+              </span>
+            </>
+          ) : null}
         </li>
       ))}
     </ul>
@@ -124,10 +169,6 @@ export const GeoTaskList = ({
     (isZh ? "任务品牌卖点" : null) ?? t`Selling points`;
   const headerCompetitorBrands =
     (isZh ? "竞品品牌及关键词" : null) ?? t`Competitor brands & keywords`;
-  const labelCompetitorBrand =
-    (isZh ? "竞品品牌" : null) ?? t`Competitor brand`;
-  const labelCompetitorKeywords =
-    (isZh ? "竞品品牌关键词" : null) ?? t`Competitor keywords`;
   const headerAiQuestion = (isZh ? "AI问题" : null) ?? t`AI Question`;
   const headerAiPlatform = (isZh ? "AI平台" : null) ?? t`AI Platform`;
   const headerAiMode = (isZh ? "AI模式" : null) ?? t`AI Mode`;
@@ -135,6 +176,7 @@ export const GeoTaskList = ({
   const headerScheduleCron = (isZh ? "定时表达式" : null) ?? t`Schedule Cron`;
   const headerActions = (isZh ? "动作" : null) ?? t`Actions`;
   const headerTaskResult = (isZh ? "任务结果" : null) ?? t`Task Result`;
+  const brandKeywordSeparator = (isZh ? "：" : null) ?? ": ";
   const labelSchedule = (isZh ? "定时" : null) ?? t`Schedule`;
   const labelEnable = (isZh ? "启用" : null) ?? t`Enable`;
   const labelDisable = (isZh ? "禁用" : null) ?? t`Disable`;
@@ -245,8 +287,7 @@ export const GeoTaskList = ({
                     <td>
                       <ComparisonBrandsCell
                         task={task}
-                        labelCompetitorBrand={labelCompetitorBrand}
-                        labelCompetitorKeywords={labelCompetitorKeywords}
+                        brandKeywordSeparator={brandKeywordSeparator}
                       />
                     </td>
                     <td>{task.query_text || "-"}</td>

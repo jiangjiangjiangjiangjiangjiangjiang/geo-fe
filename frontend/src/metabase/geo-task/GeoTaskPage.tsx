@@ -15,7 +15,7 @@ export const GeoTaskPage = () => {
     location?.query?.create === "true" ||
     String(location?.query?.create) === "true";
 
-  usePageTitle(showCreateForm ? t`New GEO Task` : t`Geo Tasks`);
+  usePageTitle(showCreateForm ? t`新建 GEO 任务` : t`GEO 任务`);
 
   const goToList = () => {
     router.replace({ pathname: "/geo-task", query: {} });
@@ -38,7 +38,7 @@ export const GeoTaskPage = () => {
     <Box p="xl" style={{ maxWidth: "100%", width: "100%", margin: 0 }}>
       <Flex justify="space-between" align="center" mb="lg">
         <Title order={1}>
-          {showCreateForm ? t`New GEO Task` : t`Geo Tasks`}
+          {showCreateForm ? t`新建 GEO 任务` : t`GEO 任务`}
         </Title>
         {!showCreateForm && (
           <Button
@@ -46,7 +46,7 @@ export const GeoTaskPage = () => {
             onClick={openCreateForm}
             variant="filled"
           >
-            {t`Create Geo Task`}
+            {t`创建 GEO 任务`}
           </Button>
         )}
       </Flex>
