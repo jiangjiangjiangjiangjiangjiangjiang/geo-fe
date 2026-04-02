@@ -64,6 +64,7 @@ import SegmentListContainer from "metabase/reference/segments/SegmentListContain
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SearchApp from "metabase/search/containers/SearchApp";
+import { NoteBrandSentimentRecognitionPage } from "metabase/seo/brand-sentiment-recognition/NoteBrandSentimentRecognitionPage";
 import { NoteSentimentJudgmentPage } from "metabase/seo/sentiment-judgment/NoteSentimentJudgmentPage";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
@@ -171,6 +172,10 @@ export const getRoutes = (store) => {
           <Route
             path="seo/sentiment-judgment"
             component={NoteSentimentJudgmentPage}
+          />
+          <Route
+            path="seo/brand-sentiment-recognition"
+            component={NoteBrandSentimentRecognitionPage}
           />
 
           {PLUGIN_DOCUMENTS.getRoutes()}

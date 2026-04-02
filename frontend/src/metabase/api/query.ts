@@ -53,6 +53,10 @@ function getGeoTaskRewrittenUrl(
   const isAiSentiment =
     method === "POST" &&
     (url === "/api/ai/sentiment" || url?.startsWith("/api/ai/sentiment"));
+  const isAiBrandSentiment =
+    method === "POST" &&
+    (url === "/api/ai/brand-sentiment" ||
+      url?.startsWith("/api/ai/brand-sentiment"));
 
   if (
     !isList &&
@@ -63,7 +67,8 @@ function getGeoTaskRewrittenUrl(
     !isToggle &&
     !isCategories &&
     !isAiPlatforms &&
-    !isAiSentiment
+    !isAiSentiment &&
+    !isAiBrandSentiment
   ) {
     return null;
   }
@@ -102,6 +107,9 @@ function getGeoTaskRewrittenUrl(
   }
   if (isAiSentiment) {
     return `${GEO_TASK_API_BASE_URL}/api/ai/sentiment`;
+  }
+  if (isAiBrandSentiment) {
+    return `${GEO_TASK_API_BASE_URL}/api/ai/brand-sentiment`;
   }
   return null;
 }

@@ -15,6 +15,7 @@ interface GeoTaskNavSectionProps {
 
 const GEO_TASK_URL = "/geo-task";
 const SEO_SENTIMENT_JUDGMENT_URL = "/seo/sentiment-judgment";
+const SEO_BRAND_SENTIMENT_RECOGNITION_URL = "/seo/brand-sentiment-recognition";
 
 export const GeoTaskNavSection = ({
   nonEntityItem,
@@ -76,6 +77,17 @@ export const GeoTaskNavSection = ({
           aria-label={t`Note sentiment judgment`}
         >
           {t`Note sentiment judgment`}
+        </PaddedSidebarLink>
+        <PaddedSidebarLink
+          icon="sticky_note"
+          url={SEO_BRAND_SENTIMENT_RECOGNITION_URL}
+          isSelected={nonEntityItem?.url?.startsWith(
+            SEO_BRAND_SENTIMENT_RECOGNITION_URL,
+          )}
+          onClick={onItemSelect}
+          aria-label={t`笔记品牌情感识别`}
+        >
+          {t`笔记品牌情感识别`}
         </PaddedSidebarLink>
       </CollapseSection>
     </CollapseSection>
