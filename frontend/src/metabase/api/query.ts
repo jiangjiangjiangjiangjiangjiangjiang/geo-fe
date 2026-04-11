@@ -24,7 +24,7 @@ function buildQueryString(params: Record<string, unknown> | undefined): string {
 }
 
 /**
- * Rewrite URL for geo-task / categories / ai-platforms endpoints to use GEO_TASK_API_BASE_URL.
+ * Rewrite URL for geo-task / dashboard / categories / ai-platforms endpoints to use GEO_TASK_API_BASE_URL.
  * Returns the rewritten URL, or null if the request is not one of these endpoints.
  */
 function getGeoTaskRewrittenUrl(
@@ -41,9 +41,15 @@ function getGeoTaskRewrittenUrl(
     url?.startsWith("/api/geo-task/execute-v2");
   const isSchedule =
     url?.startsWith("/api/geo-task/") && url?.includes("/schedule");
-  const isResultsOrSources =
+  const isResultsSourcesOrSummary =
     url?.startsWith("/api/geo-task/") &&
-    (url?.includes("/results") || url?.includes("/sources"));
+    (url?.includes("/results") ||
+      url?.includes("/sources") ||
+      url?.includes("/summary-form"));
+  const isDashboard =
+    method === "GET" &&
+    url?.startsWith("/api/geo-task/") &&
+    url?.includes("/dashboard/");
   const isToggle =
     method === "POST" && url?.match(/^\/api\/geo-task\/[^/]+\/toggle$/);
   const isCategories =
@@ -63,7 +69,8 @@ function getGeoTaskRewrittenUrl(
     !isAdd &&
     !isExecute &&
     !isSchedule &&
-    !isResultsOrSources &&
+    !isResultsSourcesOrSummary &&
+    !isDashboard &&
     !isToggle &&
     !isCategories &&
     !isAiPlatforms &&
@@ -94,7 +101,12 @@ function getGeoTaskRewrittenUrl(
     const path = url.replace(/^\//, "");
     return `${GEO_TASK_API_BASE_URL}/${path}`;
   }
-  if (isResultsOrSources) {
+  if (isResultsSourcesOrSummary) {
+    const queryString = buildQueryString(params);
+    const path = url.replace(/^\//, "");
+    return `${GEO_TASK_API_BASE_URL}/${path}${queryString ? `?${queryString}` : ""}`;
+  }
+  if (isDashboard) {
     const queryString = buildQueryString(params);
     const path = url.replace(/^\//, "");
     return `${GEO_TASK_API_BASE_URL}/${path}${queryString ? `?${queryString}` : ""}`;

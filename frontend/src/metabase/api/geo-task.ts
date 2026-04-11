@@ -202,10 +202,221 @@ export interface SourceListResponse {
   total_pages: number;
 }
 
+export interface GeoTaskSummaryTerm {
+  term_index: number;
+  term_label: string;
+  keyword: string;
+  mention_count: number;
+  mention_rate: number;
+}
+
+export interface GeoTaskSummaryBrandSummary {
+  brand_name: string;
+  brand_role: "product_brand" | "competitor";
+  brand_term_1: string | null;
+  product_terms: string[];
+  mention_count: number;
+  mention_rate: number;
+  first_recommendation_count: number;
+  first_recommendation_rate: number;
+  top3_count: number;
+  top3_rate: number;
+  positive_count: number;
+  positive_rate: number;
+  neutral_count: number;
+  neutral_rate: number;
+  negative_count: number;
+  negative_rate: number;
+  average_rank: number | null;
+  best_rank: number | null;
+  brand_terms: GeoTaskSummaryTerm[];
+  product_keyword_terms: GeoTaskSummaryTerm[];
+  selling_point_terms: GeoTaskSummaryTerm[];
+}
+
+export interface GeoTaskSummaryForm {
+  task: {
+    task_id: string;
+    task_name: string;
+    query_text: string;
+    ai_mode: string;
+    ai_model: string;
+    ai_platforms: string[];
+    product_brand: string | null;
+    comparison_brands: string[];
+    product_keywords: string[];
+    selling_point_keywords: string[];
+  };
+  batch: {
+    result_count: number;
+    platform_count: number;
+    platforms: string[];
+    started_at: string | null;
+    ended_at: string | null;
+  };
+  summary: {
+    basic_info: {
+      task_id: string;
+      task_name: string;
+      query_text: string;
+      ai_mode: string;
+      ai_model: string;
+      ai_platforms: string[];
+      result_count: number;
+      platform_count: number;
+    };
+    product_summary: GeoTaskSummaryBrandSummary | null;
+    comparison_summaries: GeoTaskSummaryBrandSummary[];
+  };
+}
+
+export interface GeoTaskDashboardRequest {
+  taskId: string;
+  start_date: string;
+  end_date: string;
+}
+
+interface GeoTaskDashboardApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T | null;
+}
+
+export interface GeoTaskDashboardSummary {
+  task: {
+    task_id: string;
+    task_name: string;
+    query_text: string;
+    product_brand: string | null;
+    comparison_brands: string[];
+    ai_model: string | null;
+    enabled: boolean;
+    last_run_at: string | null;
+  };
+  date_range: {
+    start_date: string;
+    end_date: string;
+  };
+  metrics: {
+    brand_mention_count: number;
+    brand_mention_count_change: number | null;
+    covered_platform_count: number;
+    total_platform_count: number;
+    average_rank: number | null;
+    best_rank: number | null;
+    best_rank_platforms: string[];
+    first_recommendation_platform_count: number;
+    first_recommendation_platforms: string[];
+    top3_platform_count: number;
+    top3_platforms: string[];
+  };
+}
+
+export interface GeoTaskDashboardBrand {
+  brand_name: string;
+  brand_role: "product_brand" | "competitor";
+}
+
+export interface GeoTaskDashboardPlatform {
+  platform_key: string;
+  platform_name: string;
+}
+
+export interface GeoTaskDashboardMatrixCell {
+  platform_key: string;
+  platform_name: string;
+  brand_name: string;
+  brand_role: "product_brand" | "competitor";
+  mentioned: boolean;
+  rank: number | null;
+  display_text: string;
+  status: "mentioned_with_rank" | "mentioned_without_rank" | "not_mentioned";
+  is_first_recommendation: boolean;
+  in_top3: boolean;
+}
+
+export interface GeoTaskDashboardMatrixLegendItem {
+  status: "mentioned_with_rank" | "mentioned_without_rank" | "not_mentioned";
+  label: string;
+}
+
+export interface GeoTaskDashboardMatrix {
+  brands: GeoTaskDashboardBrand[];
+  platforms: GeoTaskDashboardPlatform[];
+  cells: GeoTaskDashboardMatrixCell[];
+  legend: GeoTaskDashboardMatrixLegendItem[];
+}
+
+export interface GeoTaskDashboardTopSourceItem {
+  source_name: string;
+  source_domain: string;
+  reference_count: number;
+  percentage: number;
+  sample_urls: string[];
+}
+
+export interface GeoTaskDashboardTopSources {
+  items: GeoTaskDashboardTopSourceItem[];
+  total_reference_count: number;
+}
+
+export interface GeoTaskDashboardMentionTrendSeriesPoint {
+  date: string;
+  mention_count: number;
+}
+
+export interface GeoTaskDashboardMentionTrendSeries {
+  brand_name: string;
+  brand_role: "product_brand" | "competitor";
+  points: GeoTaskDashboardMentionTrendSeriesPoint[];
+}
+
+export interface GeoTaskDashboardMentionTrend {
+  granularity: "day";
+  x_axis: string[];
+  series: GeoTaskDashboardMentionTrendSeries[];
+}
+
+export interface GeoTaskDashboardSentimentOverall {
+  positive_count: number;
+  neutral_count: number;
+  negative_count: number;
+  positive_ratio: number;
+  neutral_ratio: number;
+  negative_ratio: number;
+}
+
+export interface GeoTaskDashboardSentimentByPlatform {
+  platform_key: string;
+  platform_name: string;
+  sentiment_label: "positive" | "neutral" | "negative";
+  sentiment_score: number;
+}
+
+export interface GeoTaskDashboardSentimentDistribution {
+  overall: GeoTaskDashboardSentimentOverall;
+  by_platform: GeoTaskDashboardSentimentByPlatform[];
+}
+
+export interface GeoTaskDashboardTopSourcesRequest
+  extends GeoTaskDashboardRequest {
+  limit?: number;
+}
+
 /** Single AI platform item from GET /api/ai-platforms (for task ai_model selection) */
 export interface AiPlatformItem {
   key: string;
   name: string;
+}
+
+function unwrapGeoTaskDashboardResponse<T>(
+  response: GeoTaskDashboardApiResponse<T>,
+): T {
+  if (response.data == null) {
+    throw new Error(response.message || "Geo dashboard data is empty");
+  }
+
+  return response.data;
 }
 
 export const geoTaskApi = Api.injectEndpoints({
@@ -301,6 +512,68 @@ export const geoTaskApi = Api.injectEndpoints({
         }),
       },
     ),
+    getGeoTaskSummaryForm: builder.query<GeoTaskSummaryForm, string>({
+      query: (taskId) => ({
+        method: "GET",
+        url: `/api/geo-task/${taskId}/summary-form`,
+      }),
+      transformResponse: unwrapGeoTaskDashboardResponse,
+    }),
+    getGeoTaskDashboardSummary: builder.query<
+      GeoTaskDashboardSummary,
+      GeoTaskDashboardRequest
+    >({
+      query: ({ taskId, start_date, end_date }) => ({
+        method: "GET",
+        url: `/api/geo-task/${taskId}/dashboard/summary`,
+        params: { start_date, end_date },
+      }),
+      transformResponse: unwrapGeoTaskDashboardResponse,
+    }),
+    getGeoTaskDashboardMatrix: builder.query<
+      GeoTaskDashboardMatrix,
+      GeoTaskDashboardRequest
+    >({
+      query: ({ taskId, start_date, end_date }) => ({
+        method: "GET",
+        url: `/api/geo-task/${taskId}/dashboard/matrix`,
+        params: { start_date, end_date },
+      }),
+      transformResponse: unwrapGeoTaskDashboardResponse,
+    }),
+    getGeoTaskDashboardTopSources: builder.query<
+      GeoTaskDashboardTopSources,
+      GeoTaskDashboardTopSourcesRequest
+    >({
+      query: ({ taskId, start_date, end_date, limit = 10 }) => ({
+        method: "GET",
+        url: `/api/geo-task/${taskId}/dashboard/top-sources`,
+        params: { start_date, end_date, limit },
+      }),
+      transformResponse: unwrapGeoTaskDashboardResponse,
+    }),
+    getGeoTaskDashboardMentionTrend: builder.query<
+      GeoTaskDashboardMentionTrend,
+      GeoTaskDashboardRequest
+    >({
+      query: ({ taskId, start_date, end_date }) => ({
+        method: "GET",
+        url: `/api/geo-task/${taskId}/dashboard/mention-trend`,
+        params: { start_date, end_date, granularity: "day" },
+      }),
+      transformResponse: unwrapGeoTaskDashboardResponse,
+    }),
+    getGeoTaskDashboardSentimentDistribution: builder.query<
+      GeoTaskDashboardSentimentDistribution,
+      GeoTaskDashboardRequest
+    >({
+      query: ({ taskId, start_date, end_date }) => ({
+        method: "GET",
+        url: `/api/geo-task/${taskId}/dashboard/sentiment-distribution`,
+        params: { start_date, end_date },
+      }),
+      transformResponse: unwrapGeoTaskDashboardResponse,
+    }),
   }),
 });
 
@@ -315,4 +588,10 @@ export const {
   useSetTaskScheduleMutation,
   useGetGeoTaskResultsQuery,
   useGetGeoTaskSourcesQuery,
+  useGetGeoTaskSummaryFormQuery,
+  useGetGeoTaskDashboardSummaryQuery,
+  useGetGeoTaskDashboardMatrixQuery,
+  useGetGeoTaskDashboardTopSourcesQuery,
+  useGetGeoTaskDashboardMentionTrendQuery,
+  useGetGeoTaskDashboardSentimentDistributionQuery,
 } = geoTaskApi;

@@ -30,9 +30,11 @@ import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/Ar
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
+import { GeoTaskDashboardPage } from "metabase/geo-task/GeoTaskDashboardPage";
 import { GeoTaskPage } from "metabase/geo-task/GeoTaskPage";
 import { GeoTaskResultsPage } from "metabase/geo-task/GeoTaskResultsPage";
 import { GeoTaskSourcesPage } from "metabase/geo-task/GeoTaskSourcesPage";
+import { GeoTaskSummaryFormPage } from "metabase/geo-task/GeoTaskSummaryFormPage";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
@@ -161,8 +163,16 @@ export const getRoutes = (store) => {
 
           <Route path="geo-task" component={GeoTaskPage} />
           <Route
+            path="geo-task/:taskId/dashboard"
+            component={GeoTaskDashboardPage}
+          />
+          <Route
             path="geo-task/:taskId/results"
             component={GeoTaskResultsPage}
+          />
+          <Route
+            path="geo-task/:taskId/summary-form"
+            component={GeoTaskSummaryFormPage}
           />
           <Route
             path="geo-task/:taskId/sources"

@@ -158,7 +158,9 @@ export const GeoTaskList = ({
   const { router } = useRouter();
   const isZh = locale?.startsWith("zh");
   const viewResultsLabel = (isZh ? "查看结果" : null) ?? t`View results`;
+  const viewSummaryLabel = (isZh ? "汇总结果" : null) ?? t`Summary`;
   const viewSourcesLabel = (isZh ? "查看信源" : null) ?? t`View sources`;
+  const viewDashboardLabel = (isZh ? "监测看板" : null) ?? t`Dashboard`;
 
   // 表头与按钮中文兜底
   const headerTaskId = (isZh ? "任务ID" : null) ?? t`Task ID`;
@@ -245,6 +247,14 @@ export const GeoTaskList = ({
 
   const handleViewSources = (task: GeoTask) => {
     router.push(`/geo-task/${task.id}/sources`);
+  };
+
+  const handleViewSummary = (task: GeoTask) => {
+    router.push(`/geo-task/${task.id}/summary-form`);
+  };
+
+  const handleViewDashboard = (task: GeoTask) => {
+    router.push(`/geo-task/${task.id}/dashboard`);
   };
 
   return (
@@ -353,10 +363,24 @@ export const GeoTaskList = ({
                       <Flex gap="xs" wrap="wrap" align="center">
                         <Button
                           size="sm"
+                          variant="light"
+                          onClick={() => handleViewDashboard(task)}
+                        >
+                          {viewDashboardLabel}
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="subtle"
                           onClick={() => handleViewResults(task)}
                         >
                           {viewResultsLabel}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="subtle"
+                          onClick={() => handleViewSummary(task)}
+                        >
+                          {viewSummaryLabel}
                         </Button>
                         <Button
                           size="sm"
