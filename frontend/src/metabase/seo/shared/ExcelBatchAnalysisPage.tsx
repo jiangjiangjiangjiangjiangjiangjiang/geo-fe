@@ -18,11 +18,24 @@ type RowExtractionResult<TRequest> = {
   request: TRequest;
 };
 
-type RowResult =
+type RowResult<TResponse> =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "success"; resultText: string }
+  | { status: "success"; resultText: string; response: TResponse }
   | { status: "error"; message: string };
+
+type ExportRowContext<TResponse> = {
+  rowIndex: number;
+  noteTitle: string;
+  noteContent: string;
+  row: RowRecord;
+  result: RowResult<TResponse>;
+  defaultStatusText: string;
+};
+
+export type ExcelBatchExportRowBuilder<TResponse> = (
+  exportContext: ExportRowContext<TResponse>,
+) => Record<string, string | number>;
 
 interface ExcelBatchAnalysisPageProps<TRequest, TResponse> {
   pageTitle: string;
@@ -37,6 +50,7 @@ interface ExcelBatchAnalysisPageProps<TRequest, TResponse> {
   buildRequestFromRow: (row: RowRecord) => RowExtractionResult<TRequest>;
   getResultText: (response: TResponse) => string;
   validateParsedRows?: (rows: RowRecord[]) => string | null;
+  buildExportRow?: ExcelBatchExportRowBuilder<TResponse>;
 }
 
 const MAX_EXCEL_ROWS = 100;
@@ -88,7 +102,7 @@ function isExcelFile(file: File): boolean {
   );
 }
 
-function getStatusText(result: RowResult) {
+function getStatusText<TResponse>(result: RowResult<TResponse>) {
   if (result.status === "success") {
     return result.resultText || t`Passed`;
   }
@@ -114,12 +128,13 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
   buildRequestFromRow,
   getResultText,
   validateParsedRows,
+  buildExportRow,
 }: ExcelBatchAnalysisPageProps<TRequest, TResponse>) {
   usePageTitle(pageTitle);
 
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<RowRecord[]>([]);
-  const [results, setResults] = useState<RowResult[]>([]);
+  const [results, setResults] = useState<RowResult<TResponse>[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [showRowLimitWarning, setShowRowLimitWarning] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -232,7 +247,7 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
 
           setResults((previousResults) => {
             const nextResults = [...previousResults];
-            nextResults[index] = { status: "success", resultText };
+            nextResults[index] = { status: "success", resultText, response };
             return nextResults;
           });
         } catch (error) {
@@ -275,16 +290,38 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
     const exportRows = rows.map((row, index) => {
       const { noteTitle, noteContent } = buildRequestFromRow(row);
       const result = results[index] ?? { status: "idle" as const };
+      const defaultStatusText = getStatusText(result);
 
-      return {
+      const defaultExportRow = {
         [t`Row number`]: index + 1,
         [t`Note title`]: noteTitle || "",
         [t`Note content`]: noteContent || "",
-        [resultColumnLabel]: getStatusText(result),
+        [resultColumnLabel]: defaultStatusText,
       };
+
+      if (!buildExportRow) {
+        return defaultExportRow;
+      }
+
+      return buildExportRow({
+        rowIndex: index,
+        noteTitle,
+        noteContent,
+        row,
+        result,
+        defaultStatusText,
+      });
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    const headerOrder = Array.from(
+      exportRows.reduce((headers, exportRow) => {
+        Object.keys(exportRow).forEach((key) => headers.add(key));
+        return headers;
+      }, new Set<string>()),
+    );
+    const worksheet = XLSX.utils.json_to_sheet(exportRows, {
+      header: headerOrder,
+    });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, exportSheetName);
 
@@ -295,6 +332,7 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
     exportFileSuffix,
     exportSheetName,
     file,
+    buildExportRow,
     resultColumnLabel,
     results,
     rows,
@@ -307,7 +345,7 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
       (result) => result.status === "success" || result.status === "error",
     );
 
-  const renderResult = (result: RowResult) => {
+  const renderResult = (result: RowResult<TResponse>) => {
     if (result.status === "idle") {
       return (
         <span className={S.resultPending}>

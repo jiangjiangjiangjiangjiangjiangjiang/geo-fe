@@ -78,6 +78,11 @@ function formatNumber(value: number | null | undefined): string {
   return value.toFixed(4).replace(/\.?0+$/, "");
 }
 
+function formatRate(value: number | null | undefined): string {
+  const formattedValue = formatNumber(value);
+  return formattedValue === "-" ? formattedValue : `${formattedValue}%`;
+}
+
 function formatStringArray(value: string[] | null | undefined): string {
   if (!value || value.length === 0) {
     return "-";
@@ -129,7 +134,7 @@ function buildTermColumns(
       {
         key: `${prefix}-${term.term_index}-mention-rate`,
         label: t`提及率`,
-        value: formatNumber(term.mention_rate),
+        value: formatRate(term.mention_rate),
       },
     ],
   }));
@@ -162,7 +167,7 @@ function buildSingleKeywordGroup(
       {
         key: `${prefix}-keyword-mention-rate`,
         label: t`提及率`,
-        value: formatNumber(term?.mention_rate),
+        value: formatRate(term?.mention_rate),
       },
     ],
   };
@@ -208,7 +213,7 @@ function buildBrandOverviewGroup(
       {
         key: `${prefix}-mention-rate`,
         label: t`提及率`,
-        value: formatNumber(summary.mention_rate),
+        value: formatRate(summary.mention_rate),
       },
       {
         key: `${prefix}-first-recommendation-count`,
@@ -218,7 +223,7 @@ function buildBrandOverviewGroup(
       {
         key: `${prefix}-first-recommendation-rate`,
         label: t`首推率`,
-        value: formatNumber(summary.first_recommendation_rate),
+        value: formatRate(summary.first_recommendation_rate),
       },
       {
         key: `${prefix}-top3-count`,
@@ -228,7 +233,7 @@ function buildBrandOverviewGroup(
       {
         key: `${prefix}-top3-rate`,
         label: t`TOP3 率`,
-        value: formatNumber(summary.top3_rate),
+        value: formatRate(summary.top3_rate),
       },
       {
         key: `${prefix}-positive-count`,
@@ -238,7 +243,7 @@ function buildBrandOverviewGroup(
       {
         key: `${prefix}-positive-rate`,
         label: t`正面率`,
-        value: formatNumber(summary.positive_rate),
+        value: formatRate(summary.positive_rate),
       },
       {
         key: `${prefix}-neutral-count`,
@@ -248,7 +253,7 @@ function buildBrandOverviewGroup(
       {
         key: `${prefix}-neutral-rate`,
         label: t`中性率`,
-        value: formatNumber(summary.neutral_rate),
+        value: formatRate(summary.neutral_rate),
       },
       {
         key: `${prefix}-negative-count`,
@@ -258,7 +263,7 @@ function buildBrandOverviewGroup(
       {
         key: `${prefix}-negative-rate`,
         label: t`负面率`,
-        value: formatNumber(summary.negative_rate),
+        value: formatRate(summary.negative_rate),
       },
       {
         key: `${prefix}-average-rank`,

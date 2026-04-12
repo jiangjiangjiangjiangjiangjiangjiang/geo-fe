@@ -1,8 +1,17 @@
 import { t } from "ttag";
 
-import { useGetBrandSentimentRecognitionMutation } from "metabase/api/seo";
-import { ExcelBatchAnalysisPage } from "metabase/seo/shared/ExcelBatchAnalysisPage";
-import { formatBrandSentimentResult } from "metabase/seo/shared/result-format";
+import {
+  type BrandSentimentRecognitionResponse,
+  useGetBrandSentimentRecognitionMutation,
+} from "metabase/api/seo";
+import {
+  ExcelBatchAnalysisPage,
+  type ExcelBatchExportRowBuilder,
+} from "metabase/seo/shared/ExcelBatchAnalysisPage";
+import {
+  buildBrandSentimentExportColumns,
+  formatBrandSentimentResult,
+} from "metabase/seo/shared/result-format";
 
 type RowRecord = Record<string, unknown>;
 
@@ -53,6 +62,20 @@ function buildBrandSentimentRequestFromRow(row: RowRecord) {
   };
 }
 
+const buildBrandSentimentExportRow: ExcelBatchExportRowBuilder<
+  BrandSentimentRecognitionResponse
+> = ({ rowIndex, noteTitle, noteContent, result, defaultStatusText }) => {
+  return {
+    [t`Row number`]: rowIndex + 1,
+    [t`Note title`]: noteTitle || "",
+    [t`Note content`]: noteContent || "",
+    [t`品牌情感结果`]: defaultStatusText,
+    ...(result.status === "success"
+      ? buildBrandSentimentExportColumns(result.response)
+      : {}),
+  };
+};
+
 export function NoteBrandSentimentRecognitionPage() {
   const [getBrandSentimentRecognition] =
     useGetBrandSentimentRecognitionMutation();
@@ -70,6 +93,7 @@ export function NoteBrandSentimentRecognitionPage() {
       buildRequestFromRow={buildBrandSentimentRequestFromRow}
       validateParsedRows={validateBrandSentimentRows}
       analyzeRow={(request) => getBrandSentimentRecognition(request).unwrap()}
+      buildExportRow={buildBrandSentimentExportRow}
       getResultText={(response) =>
         formatBrandSentimentResult(response) || t`未识别到品牌`
       }
