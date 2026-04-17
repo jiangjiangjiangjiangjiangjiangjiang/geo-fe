@@ -13,6 +13,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useLocale, useToast } from "metabase/common/hooks";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { formatScheduleCronForDisplay } from "metabase/geo-task/lib/schedule";
 import { useRouter } from "metabase/router";
 import { Button, Flex } from "metabase/ui";
 
@@ -44,18 +45,13 @@ const competitorKeywordsStyle = {
   wordBreak: "break-word" as const,
 };
 
-function formatScheduleCronForDisplay(cron?: string | null): string {
-  if (!cron || !cron.trim()) {
-    return "-";
+function getAiPlatformsForDisplay(task: GeoTask): string {
+  const aiPlatforms = task.ai_platforms?.filter(Boolean) ?? [];
+  if (aiPlatforms.length > 0) {
+    return aiPlatforms.join("、");
   }
 
-  const trimmedCron = cron.trim();
-  const hourlyMatch = trimmedCron.match(/^0 \*\/(\d{1,2}) \* \* \*$/);
-  if (hourlyMatch) {
-    return `1次/${hourlyMatch[1]}小时`;
-  }
-
-  return trimmedCron;
+  return task.ai_model ?? task.platform_name ?? "-";
 }
 
 function SellingPointsCell({ task }: { task: GeoTask }) {
@@ -301,7 +297,7 @@ export const GeoTaskList = ({
                       />
                     </td>
                     <td>{task.query_text || "-"}</td>
-                    <td>{task.ai_model ?? "-"}</td>
+                    <td>{getAiPlatformsForDisplay(task)}</td>
                     <td>{task.ai_mode ?? "-"}</td>
                     <td>{task.enabled ? labelYes : labelNo}</td>
                     <td>{formatScheduleCronForDisplay(task.schedule_cron)}</td>

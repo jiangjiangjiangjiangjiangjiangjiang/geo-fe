@@ -18,26 +18,13 @@ import {
   Text,
 } from "metabase/ui";
 
+import { dailyFrequencyToCron, parseScheduleCron } from "../lib/schedule";
+
 interface ScheduleConfigModalProps {
   task: GeoTask | null;
   opened: boolean;
   onClose: () => void;
   onSaved?: () => void;
-}
-
-function hoursToCron(hours: number): string {
-  return `0 */${hours} * * *`;
-}
-
-function cronToHours(cron?: string | null): number | null {
-  if (!cron) {
-    return null;
-  }
-  const match = cron.trim().match(/^0 \*\/(\d{1,2}) \* \* \*$/);
-  if (!match) {
-    return null;
-  }
-  return Number(match[1]);
 }
 
 /** Extract a single error message string from API response detail (string or array). */
@@ -88,15 +75,17 @@ export function ScheduleConfigModal({
   const scheduleTitle =
     (locale && locale.startsWith("zh") ? "日程" : null) ?? t`Schedule`;
   const frequencyLabel =
-    (locale && locale.startsWith("zh") ? "Search Frequency (hours)" : null) ??
-    t`Search Frequency (hours)`;
-  const [hoursInput, setHoursInput] = useState<number | string>("");
+    (locale && locale.startsWith("zh") ? "搜索频次（次/天）" : null) ??
+    t`Search Frequency (times/day)`;
+  const [timesPerDayInput, setTimesPerDayInput] = useState<number | string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasUnsupportedCron, setHasUnsupportedCron] = useState(false);
 
   const cronValue =
-    typeof hoursInput === "number" && hoursInput >= 1 && hoursInput <= 24
-      ? hoursToCron(hoursInput)
+    typeof timesPerDayInput === "number" &&
+    timesPerDayInput >= 1 &&
+    timesPerDayInput <= 24
+      ? (dailyFrequencyToCron(timesPerDayInput) ?? "")
       : "";
 
   const editRunTimes = useMemo(
@@ -106,12 +95,12 @@ export function ScheduleConfigModal({
 
   useEffect(() => {
     if (schedule) {
-      const parsedHours = cronToHours(schedule.schedule_cron);
-      setHoursInput(parsedHours ?? "");
+      const parsedSchedule = parseScheduleCron(schedule.schedule_cron);
+      setTimesPerDayInput(parsedSchedule?.timesPerDay ?? "");
       setHasUnsupportedCron(
         schedule.schedule_cron != null &&
           schedule.schedule_cron.trim() !== "" &&
-          parsedHours == null,
+          parsedSchedule == null,
       );
     }
   }, [schedule]);
@@ -127,21 +116,32 @@ export function ScheduleConfigModal({
     setErrorMessage(null);
     if (
       !taskId ||
-      typeof hoursInput !== "number" ||
-      hoursInput < 1 ||
-      hoursInput > 24
+      typeof timesPerDayInput !== "number" ||
+      timesPerDayInput < 1 ||
+      timesPerDayInput > 24
     ) {
       sendToast({
-        message: t`Please enter a whole number from 1 to 24`,
+        message: t`Please enter a number from 1 to 24`,
         icon: "warning_triangle_filled",
         iconColor: "var(--mb-color-warning)",
       });
       return;
     }
+
+    const scheduleCron = dailyFrequencyToCron(timesPerDayInput);
+    if (!scheduleCron) {
+      sendToast({
+        message: t`Unable to convert the frequency into a schedule`,
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+      });
+      return;
+    }
+
     try {
       await setSchedule({
         taskId,
-        body: { schedule_cron: hoursToCron(hoursInput) },
+        body: { schedule_cron: scheduleCron },
       }).unwrap();
       sendToast({ message: t`Schedule updated`, icon: "check" });
       onSaved?.();
@@ -189,7 +189,7 @@ export function ScheduleConfigModal({
           )}
           {hasUnsupportedCron && (
             <Alert color="warning" title={t`Unsupported existing schedule`}>
-              {t`The current cron expression is not in the every-N-hours format. Enter a value from 1 to 24 to replace it.`}
+              {t`The current cron expression cannot be converted to times per day. Enter a value from 1 to 24 to replace it.`}
             </Alert>
           )}
           <Text size="sm" c="dimmed">
@@ -205,13 +205,13 @@ export function ScheduleConfigModal({
               </Text>
               <NumberInput
                 label={frequencyLabel}
-                placeholder={t`e.g. 6 for every 6 hours (1–24)`}
+                placeholder={t`e.g. 4 for 4 runs per day (1-24)`}
                 min={1}
                 max={24}
-                allowDecimal={false}
+                decimalScale={2}
                 clampBehavior="strict"
-                value={hoursInput}
-                onChange={setHoursInput}
+                value={timesPerDayInput}
+                onChange={setTimesPerDayInput}
               />
               {cronValue && (
                 <Stack gap="xs">

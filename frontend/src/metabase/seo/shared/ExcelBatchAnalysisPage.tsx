@@ -1,11 +1,15 @@
 import type { ChangeEvent, DragEvent } from "react";
 import { useCallback, useRef, useState } from "react";
-import { t } from "ttag";
+import { gettext, t } from "ttag";
 import * as XLSX from "xlsx";
 
 import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import {
+  EXCEL_ROW_LIMIT_WARNING_MSGID,
+  MAX_EXCEL_ROWS,
+} from "metabase/seo/shared/excel-row-limit";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 
 import S from "./ExcelBatchAnalysisPage.module.css";
@@ -53,7 +57,6 @@ interface ExcelBatchAnalysisPageProps<TRequest, TResponse> {
   buildExportRow?: ExcelBatchExportRowBuilder<TResponse>;
 }
 
-const MAX_EXCEL_ROWS = 100;
 const EXCEL_ACCEPT =
   ".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel";
 
@@ -85,7 +88,7 @@ function parseExcelFile(file: File): Promise<RowRecord[]> {
 function processFile(
   file: File | null,
   onParsed: (rows: RowRecord[]) => void,
-  onError: () => void,
+  onError: (error?: unknown) => void,
 ) {
   if (!file) {
     return;
@@ -154,6 +157,16 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
         return;
       }
 
+      if (!isExcelFile(chosenFile)) {
+        const message = t`Please upload a valid Excel file (.xlsx or .xls).`;
+        setParseError(message);
+        sendToast({
+          message,
+          icon: "warning",
+        });
+        return;
+      }
+
       processFile(
         chosenFile,
         (parsedRows) => {
@@ -161,6 +174,10 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
           const validationError = validateParsedRows?.(parsedRows) ?? null;
           if (validationError) {
             setParseError(validationError);
+            sendToast({
+              message: validationError,
+              icon: "warning",
+            });
             return;
           }
 
@@ -174,15 +191,18 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
           setResults(rowsToUse.map(() => ({ status: "idle" as const })));
         },
         () => {
+          const message = t`Could not parse the file. Please use a valid Excel file.`;
           setRows([]);
           setResults([]);
-          setParseError(
-            t`Could not parse the file. Please use a valid Excel file.`,
-          );
+          setParseError(message);
+          sendToast({
+            message,
+            icon: "warning",
+          });
         },
       );
     },
-    [validateParsedRows],
+    [sendToast, validateParsedRows],
   );
 
   const handleFileInputChange = useCallback(
@@ -215,9 +235,16 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
       const droppedFile = event.dataTransfer?.files?.[0];
       if (droppedFile && isExcelFile(droppedFile)) {
         applyFile(droppedFile);
+      } else if (droppedFile) {
+        const message = t`Please upload a valid Excel file (.xlsx or .xls).`;
+        setParseError(message);
+        sendToast({
+          message,
+          icon: "warning",
+        });
       }
     },
-    [applyFile],
+    [applyFile, sendToast],
   );
 
   const triggerFileInput = useCallback(() => {
@@ -427,7 +454,7 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
                   aria-hidden
                 />
                 <span className={S.rowLimitAlertText}>
-                  {t`Excel exceeds the maximum of 100 rows; only the first 100 rows will be processed.`}
+                  {gettext(EXCEL_ROW_LIMIT_WARNING_MSGID)}
                 </span>
                 <button
                   type="button"
@@ -511,7 +538,7 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
         )}
 
         {file && rows.length === 0 && (
-          <Text size="sm" c="dimmed" mt="md">
+          <Text size="sm" c="error" fw={600} mt="md">
             {parseError ||
               t`Could not parse the file or the sheet is empty. Please use a valid Excel file with at least one data row.`}
           </Text>

@@ -10,10 +10,12 @@ export interface GeoTask {
   task_name?: string;
   query_text?: string;
   ai_model?: string;
+  ai_platforms?: string[];
   ai_mode?: string;
   comparison_brands?: string[] | Record<string, string[]>;
   product_keywords?: string;
   selling_point_keywords?: string[];
+  search_times_per_day?: number;
   enabled?: boolean;
   schedule_cron?: string;
   last_run_at?: string;
@@ -26,12 +28,15 @@ export interface CreateGeoTaskRequest {
   task_name: string;
   query_text?: string;
   ai_model?: string;
+  ai_platforms?: string[];
   ai_mode?: string;
   product_brand?: string;
   product_keywords?: string;
   selling_point_keywords?: string[];
   /** 竞品及关键词：{ 竞品名: [关键词1, 关键词2] } */
   comparison_brands?: Record<string, string[]>;
+  search_times_per_day?: number;
+  enabled?: boolean;
   schedule_cron?: string;
 }
 

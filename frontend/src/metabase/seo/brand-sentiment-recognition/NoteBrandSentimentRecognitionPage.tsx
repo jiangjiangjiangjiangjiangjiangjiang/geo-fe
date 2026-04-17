@@ -33,10 +33,6 @@ function validateBrandSentimentRows(rows: RowRecord[]): string | null {
     return null;
   }
 
-  if (rows.length > 100) {
-    return t`最多只支持 100 行笔记，请调整 Excel 后重试。`;
-  }
-
   const firstRow = rows[0];
   const hasTitleColumn = TITLE_KEYS.some((key) => key in firstRow);
   const hasContentColumn = CONTENT_KEYS.some((key) => key in firstRow);

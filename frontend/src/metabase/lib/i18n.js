@@ -6,6 +6,10 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/lib/date-time";
 import MetabaseSettings from "metabase/lib/settings";
+import {
+  EXCEL_ROW_LIMIT_WARNING_MSGID,
+  EXCEL_ROW_LIMIT_WARNING_ZH,
+} from "metabase/seo/shared/excel-row-limit";
 
 // note this won't refresh strings that are evaluated at load time
 export async function loadLocalization(locale) {
@@ -502,12 +506,10 @@ function setLanguage(translationsObject) {
             "Processing...": { msgid: "Processing...", msgstr: ["处理中..."] },
             Passed: { msgid: "Passed", msgstr: ["通过"] },
             Failed: { msgid: "Failed", msgstr: ["失败"] },
-            "Excel exceeds the maximum of 100 rows; only the first 100 rows will be processed.":
-              {
-                msgid:
-                  "Excel exceeds the maximum of 100 rows; only the first 100 rows will be processed.",
-                msgstr: ["Excel 超过 100 行上限，仅处理前 100 行。"],
-              },
+            [EXCEL_ROW_LIMIT_WARNING_MSGID]: {
+              msgid: EXCEL_ROW_LIMIT_WARNING_MSGID,
+              msgstr: [EXCEL_ROW_LIMIT_WARNING_ZH],
+            },
           };
 
           for (const [key, value] of Object.entries(fallbackTranslations)) {
@@ -724,12 +726,10 @@ function addMsgIds(translationsObject) {
       "Processing...": { msgid: "Processing...", msgstr: ["处理中..."] },
       Passed: { msgid: "Passed", msgstr: ["通过"] },
       Failed: { msgid: "Failed", msgstr: ["失败"] },
-      "Excel exceeds the maximum of 100 rows; only the first 100 rows will be processed.":
-        {
-          msgid:
-            "Excel exceeds the maximum of 100 rows; only the first 100 rows will be processed.",
-          msgstr: ["Excel 超过 100 行上限，仅处理前 100 行。"],
-        },
+      [EXCEL_ROW_LIMIT_WARNING_MSGID]: {
+        msgid: EXCEL_ROW_LIMIT_WARNING_MSGID,
+        msgstr: [EXCEL_ROW_LIMIT_WARNING_ZH],
+      },
     };
 
     for (const [key, value] of Object.entries(fallbackTranslations)) {

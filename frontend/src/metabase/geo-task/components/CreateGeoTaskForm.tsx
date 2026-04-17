@@ -1,4 +1,4 @@
-import { useFormikContext } from "formik";
+import { useField, useFormikContext } from "formik";
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -14,16 +14,17 @@ import {
   Form,
   FormNumberInput,
   FormProvider,
-  FormSelect,
   FormSubmitButton,
 } from "metabase/forms";
 import { FormField } from "metabase/forms/components/FormField";
+import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextInput } from "metabase/forms/components/FormTextInput";
 import {
   Button,
   Flex,
   Grid,
   Icon,
+  MultiSelect,
   Paper,
   Stack,
   Text,
@@ -41,21 +42,16 @@ interface CreateGeoTaskFormProps {
 interface FormValues {
   task_name: string;
   query_text: string;
-  platform_name: string | null;
+  ai_platforms: string[];
   ai_mode: string | null;
   product_brand: string;
   comparison_brand_names: string[];
   product_keywords: string;
   comparison_product_keywords: string[];
   selling_point_keywords: string[];
-  /** User-facing: hours between runs (e.g. 6). Converted to cron on submit. */
-  schedule_hours: number | null;
+  /** User-facing: runs per day (e.g. 4). Sent as search_times_per_day. */
+  search_times_per_day: number | null;
   enabled: boolean;
-}
-
-/** Convert hours to cron: e.g. 6 -> every 6 hours at minute 0 */
-function hoursToCron(hours: number): string {
-  return `0 */${hours} * * *`;
 }
 
 /** 竞品：品牌与产品关键词 1:1 成对，每行一个品牌 + 对应产品关键词 */
@@ -241,6 +237,37 @@ function DynamicStringList({
   );
 }
 
+function FormMultiSelectField({
+  name,
+  label,
+  placeholder,
+  data,
+}: {
+  name: keyof FormValues;
+  label: string;
+  placeholder: string;
+  data: Array<{ value: string; label: string }>;
+}) {
+  const [{ value }, { error, touched }, { setValue, setTouched }] =
+    useField<string[]>(name);
+
+  return (
+    <FormField title={label} error={touched ? error : undefined} mb={0}>
+      <MultiSelect
+        name={name}
+        value={value ?? []}
+        data={data}
+        placeholder={placeholder}
+        searchable
+        clearable
+        nothingFoundMessage={t`暂无可选项`}
+        onChange={(nextValue) => setValue(nextValue)}
+        onBlur={() => setTouched(true)}
+      />
+    </FormField>
+  );
+}
+
 export const CreateGeoTaskForm = ({
   onSuccess,
   onCancel,
@@ -255,7 +282,9 @@ export const CreateGeoTaskForm = ({
         query_text: Yup.string()
           .nullable()
           .max(500, t`任务问题不能超过 500 个字符`),
-        platform_name: Yup.string().nullable(),
+        ai_platforms: Yup.array()
+          .of(Yup.string().trim())
+          .min(1, t`请至少选择一个 AI 平台`),
         ai_mode: Yup.string().nullable(),
         product_brand: Yup.string()
           .nullable()
@@ -268,11 +297,11 @@ export const CreateGeoTaskForm = ({
           .of(Yup.string())
           .max(MAX_COMPETITORS, t`最多支持 10 个竞品`),
         selling_point_keywords: Yup.array().of(Yup.string()),
-        schedule_hours: Yup.number()
+        search_times_per_day: Yup.number()
           .nullable()
           .integer(t`请输入整数`)
-          .min(1, t`最小值为 1 小时`)
-          .max(24, t`最大值为 24 小时（每天一次）`),
+          .min(1, t`最小值为每天 1 次`)
+          .max(24, t`最大值为每天 24 次`),
         enabled: Yup.boolean(),
       }),
     [],
@@ -282,14 +311,14 @@ export const CreateGeoTaskForm = ({
     () => ({
       task_name: "",
       query_text: "",
-      platform_name: null,
+      ai_platforms: [],
       ai_mode: null,
       product_brand: "",
       comparison_brand_names: [""],
       product_keywords: "",
       comparison_product_keywords: [""],
       selling_point_keywords: [""],
-      schedule_hours: null,
+      search_times_per_day: null,
       enabled: true,
     }),
     [],
@@ -323,7 +352,10 @@ export const CreateGeoTaskForm = ({
     const body: CreateGeoTaskRequest = {
       task_name: values.task_name,
       query_text: values.query_text || undefined,
-      ai_model: values.platform_name ?? undefined,
+      ai_platforms: values.ai_platforms.length
+        ? values.ai_platforms
+        : undefined,
+      ai_model: values.ai_platforms[0] ?? undefined,
       ai_mode: values.ai_mode ?? undefined,
       product_brand: values.product_brand ?? undefined,
       product_keywords: values.product_keywords || undefined,
@@ -331,10 +363,11 @@ export const CreateGeoTaskForm = ({
       comparison_brands: Object.keys(comparison_brands).length
         ? comparison_brands
         : undefined,
-      schedule_cron:
-        values.schedule_hours != null && values.schedule_hours >= 1
-          ? hoursToCron(values.schedule_hours)
+      search_times_per_day:
+        values.search_times_per_day != null && values.search_times_per_day >= 1
+          ? values.search_times_per_day
           : undefined,
+      enabled: values.enabled,
     };
 
     try {
@@ -399,12 +432,11 @@ function CreateGeoTaskFormInner({
                 />
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
-                <FormSelect
-                  name="platform_name"
-                  label={t`AI 模型`}
-                  placeholder={t`请选择 AI 模型`}
+                <FormMultiSelectField
+                  name="ai_platforms"
+                  label={t`AI 平台`}
+                  placeholder={t`请选择 AI 平台`}
                   data={aiModelOptions}
-                  searchable
                 />
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
@@ -453,14 +485,14 @@ function CreateGeoTaskFormInner({
           </Stack>
         </Paper>
 
-        {/* 搜索频次：仅填写小时数，提交时转为 cron */}
+        {/* 搜索频次：填写每天执行次数，提交时转为 cron */}
         <Paper p="md" radius="md" withBorder>
           <Stack gap="sm">
             <Title order={5}>{t`日程`}</Title>
             <FormNumberInput
-              name="schedule_hours"
-              label={t`搜索频率（小时）`}
-              placeholder={t`例如填写 6，表示每 6 小时执行一次（1-24）`}
+              name="search_times_per_day"
+              label={t`搜索频次（次/天）`}
+              placeholder={t`例如填写 4，表示每天执行 4 次（1-24）`}
               min={1}
               max={24}
               nullable
