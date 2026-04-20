@@ -305,15 +305,25 @@ export interface GeoTaskDashboardSummary {
   metrics: {
     brand_mention_count: number;
     brand_mention_count_change: number | null;
+    brand_mention_rate?: number | null;
+    total_result_count?: number | null;
     covered_platform_count: number;
     total_platform_count: number;
     average_rank: number | null;
     best_rank: number | null;
     best_rank_platforms: string[];
+    first_recommendation_count?: number | null;
+    first_recommendation_rate?: number | null;
     first_recommendation_platform_count: number;
     first_recommendation_platforms: string[];
+    top3_recommendation_count?: number | null;
+    top3_recommendation_rate?: number | null;
     top3_platform_count: number;
     top3_platforms: string[];
+    negative_mention_count?: number | null;
+    negative_exposure_rate?: number | null;
+    selling_point_mention_count?: number | null;
+    selling_point_exposure_rate?: number | null;
   };
 }
 
@@ -368,6 +378,7 @@ export interface GeoTaskDashboardTopSources {
 export interface GeoTaskDashboardMentionTrendSeriesPoint {
   date: string;
   mention_count: number;
+  mention_rate?: number | null;
 }
 
 export interface GeoTaskDashboardMentionTrendSeries {

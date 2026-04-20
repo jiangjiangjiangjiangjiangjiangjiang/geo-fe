@@ -39,7 +39,7 @@ type MatrixCellStatus =
 const MAX_TOP_SOURCES = 10;
 const CHART_HEIGHT = 220;
 const CHART_WIDTH = 760;
-const CHART_PADDING = { top: 20, right: 80, bottom: 32, left: 24 };
+const CHART_PADDING = { top: 20, right: 80, bottom: 32, left: 56 };
 const PRODUCT_BRAND_COLOR = "var(--mb-color-brand)";
 const COMPETITOR_COLORS = [
   "var(--mb-color-success)",
@@ -110,6 +110,29 @@ function formatDateTime(value: string | null | undefined): string {
 
 function formatPercent(value: number): string {
   return `${Math.round(value * 100)}%`;
+}
+
+function formatMetricNumber(value: number | null | undefined): string {
+  if (value == null) {
+    return "-";
+  }
+
+  if (Number.isInteger(value)) {
+    return String(value);
+  }
+
+  return value.toFixed(2).replace(/\.?0+$/, "");
+}
+
+function formatMetricRate(value: number | null | undefined): string {
+  const formattedValue = formatMetricNumber(value);
+  return formattedValue === "-" ? formattedValue : `${formattedValue}%`;
+}
+
+function getTrendPointValue(
+  point: GeoTaskDashboardMentionTrendSeries["points"][number],
+): number {
+  return point.mention_rate ?? point.mention_count;
 }
 
 function formatRatio(value: number | null | undefined): string {
@@ -458,7 +481,7 @@ function buildTrendPath(
       const y =
         CHART_PADDING.top +
         usableHeight -
-        (point.mention_count / Math.max(maxValue, 1)) * usableHeight;
+        (getTrendPointValue(point) / Math.max(maxValue, 1)) * usableHeight;
 
       return `${index === 0 ? "M" : "L"} ${x} ${y}`;
     })
@@ -485,22 +508,38 @@ function getVisibleAxisLabelIndexes(length: number, maxLabels = 6) {
 }
 
 function TrendSection({ trend }: { trend: GeoTaskDashboardMentionTrend }) {
+  const usesMentionRate = trend.series.some((item) =>
+    item.points.some((point) => point.mention_rate != null),
+  );
   const hasMentionData = trend.series.some((item) =>
-    item.points.some((point) => point.mention_count > 0),
+    item.points.some((point) => getTrendPointValue(point) > 0),
   );
   const maxValue = Math.max(
     ...trend.series.flatMap((item) =>
-      item.points.map((point) => point.mention_count),
+      item.points.map((point) => getTrendPointValue(point)),
     ),
     1,
   );
   const axisLabels = trend.x_axis;
   const visibleAxisLabelIndexes = getVisibleAxisLabelIndexes(axisLabels.length);
+  const yAxisTicks = Array.from({ length: 5 }, (_, index) => {
+    const ratio = 1 - index / 4;
+    const value = maxValue * ratio;
+    const y =
+      CHART_PADDING.top +
+      (CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom) * (1 - ratio);
+
+    return {
+      key: `tick-${index}`,
+      value,
+      y,
+    };
+  });
 
   return (
     <div style={pageSectionStyle}>
       <Title order={3} mb="lg">
-        {t`品牌提及趋势`}
+        {t`品牌提及率趋势`}
       </Title>
       {trend.series.length === 0 ? (
         <div className={CS.textSecondary}>{t`暂无趋势数据`}</div>
@@ -514,6 +553,30 @@ function TrendSection({ trend }: { trend: GeoTaskDashboardMentionTrend }) {
             viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
             style={{ width: "100%", height: "auto", display: "block" }}
           >
+            {yAxisTicks.map((tick) => (
+              <g key={tick.key}>
+                <line
+                  x1={CHART_PADDING.left}
+                  y1={tick.y}
+                  x2={CHART_WIDTH - CHART_PADDING.right}
+                  y2={tick.y}
+                  stroke="var(--mb-color-border)"
+                  strokeWidth="1"
+                  strokeDasharray="4 4"
+                />
+                <text
+                  x={CHART_PADDING.left - 8}
+                  y={tick.y + 4}
+                  textAnchor="end"
+                  fill="var(--mb-color-text-medium)"
+                  fontSize="13"
+                >
+                  {usesMentionRate
+                    ? formatMetricRate(tick.value)
+                    : formatMetricNumber(tick.value)}
+                </text>
+              </g>
+            ))}
             <line
               x1={CHART_PADDING.left}
               y1={CHART_HEIGHT - CHART_PADDING.bottom}
@@ -558,7 +621,7 @@ function TrendSection({ trend }: { trend: GeoTaskDashboardMentionTrend }) {
               const lastY =
                 CHART_PADDING.top +
                 usableHeight -
-                (lastPoint.mention_count / Math.max(maxValue, 1)) *
+                (getTrendPointValue(lastPoint) / Math.max(maxValue, 1)) *
                   usableHeight;
 
               return (
@@ -772,6 +835,76 @@ function DashboardSummaryHeader({
 
 function DashboardKpis({ summary }: { summary: GeoTaskDashboardSummary }) {
   const { metrics } = summary;
+  const kpiItems = [
+    {
+      key: "brand-mention-rate",
+      label: "品牌提及率",
+      value: formatMetricRate(metrics.brand_mention_rate),
+      description:
+        metrics.brand_mention_count != null &&
+        metrics.total_result_count != null
+          ? `我品牌提及次数 ${formatMetricNumber(metrics.brand_mention_count)} / 总结果数 ${formatMetricNumber(metrics.total_result_count)}`
+          : undefined,
+    },
+    {
+      key: "covered-platform-count",
+      label: "覆盖平台数",
+      value: `${metrics.covered_platform_count} / ${metrics.total_platform_count}`,
+      description: metrics.top3_platforms.join("、") || "暂无平台",
+    },
+    {
+      key: "average-rank",
+      label: "平均排名",
+      value: formatRatio(metrics.average_rank),
+      description:
+        metrics.best_rank == null
+          ? "最佳排名：-"
+          : `最佳排名：第 ${metrics.best_rank}\n(${metrics.best_rank_platforms.join("、") || "-"})`,
+    },
+    {
+      key: "first-recommendation-platform-count",
+      label: "首推平台数",
+      value: String(metrics.first_recommendation_platform_count),
+      description:
+        metrics.first_recommendation_platforms.join("、") || "暂无首推平台",
+    },
+    {
+      key: "first-recommendation-rate",
+      label: "首推率",
+      value: formatMetricRate(metrics.first_recommendation_rate),
+      description:
+        metrics.first_recommendation_count != null
+          ? `${formatMetricNumber(metrics.first_recommendation_count)} / ${formatMetricNumber(metrics.brand_mention_count)}`
+          : undefined,
+    },
+    {
+      key: "top3-recommendation-rate",
+      label: "top 3推荐率",
+      value: formatMetricRate(metrics.top3_recommendation_rate),
+      description:
+        metrics.top3_recommendation_count != null
+          ? `${formatMetricNumber(metrics.top3_recommendation_count)} / ${formatMetricNumber(metrics.brand_mention_count)}`
+          : undefined,
+    },
+    {
+      key: "negative-exposure-rate",
+      label: "负面信息露出率",
+      value: formatMetricRate(metrics.negative_exposure_rate),
+      description:
+        metrics.negative_mention_count != null
+          ? `${formatMetricNumber(metrics.negative_mention_count)} / ${formatMetricNumber(metrics.brand_mention_count)}`
+          : undefined,
+    },
+    {
+      key: "selling-point-exposure-rate",
+      label: "指定卖点露出率",
+      value: formatMetricRate(metrics.selling_point_exposure_rate),
+      description:
+        metrics.selling_point_mention_count != null
+          ? `${formatMetricNumber(metrics.selling_point_mention_count)} / ${formatMetricNumber(metrics.brand_mention_count)}`
+          : undefined,
+    },
+  ];
 
   return (
     <div
@@ -782,36 +915,14 @@ function DashboardKpis({ summary }: { summary: GeoTaskDashboardSummary }) {
         marginBottom: 24,
       }}
     >
-      <MetricCard
-        label="品牌总提及次数"
-        value={String(metrics.brand_mention_count)}
-        description={
-          metrics.brand_mention_count_change == null
-            ? "较上周期无对比数据"
-            : `较上周期 ${metrics.brand_mention_count_change >= 0 ? "+" : ""}${metrics.brand_mention_count_change}`
-        }
-      />
-      <MetricCard
-        label="覆盖平台数"
-        value={`${metrics.covered_platform_count} / ${metrics.total_platform_count}`}
-        description={metrics.top3_platforms.join("、") || "暂无平台"}
-      />
-      <MetricCard
-        label="平均排名"
-        value={formatRatio(metrics.average_rank)}
-        description={
-          metrics.best_rank == null
-            ? "最佳排名：-"
-            : `最佳排名：第 ${metrics.best_rank}\n(${metrics.best_rank_platforms.join("、") || "-"})`
-        }
-      />
-      <MetricCard
-        label="首推平台数"
-        value={String(metrics.first_recommendation_platform_count)}
-        description={
-          metrics.first_recommendation_platforms.join("、") || "暂无首推平台"
-        }
-      />
+      {kpiItems.map((item) => (
+        <MetricCard
+          key={item.key}
+          label={item.label}
+          value={item.value}
+          description={item.description}
+        />
+      ))}
     </div>
   );
 }
