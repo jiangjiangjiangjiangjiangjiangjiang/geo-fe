@@ -78,8 +78,18 @@ function formatNumber(value: number | null | undefined): string {
   return value.toFixed(4).replace(/\.?0+$/, "");
 }
 
+function normalizeRateForDisplay(
+  value: number | null | undefined,
+): number | null | undefined {
+  if (value == null) {
+    return value;
+  }
+
+  return Math.abs(value) <= 1 ? value * 100 : value;
+}
+
 function formatRate(value: number | null | undefined): string {
-  const formattedValue = formatNumber(value);
+  const formattedValue = formatNumber(normalizeRateForDisplay(value));
   return formattedValue === "-" ? formattedValue : `${formattedValue}%`;
 }
 

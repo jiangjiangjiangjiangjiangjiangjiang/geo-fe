@@ -1,5 +1,6 @@
 import cx from "classnames";
 import dayjs from "dayjs";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -124,8 +125,18 @@ function formatMetricNumber(value: number | null | undefined): string {
   return value.toFixed(2).replace(/\.?0+$/, "");
 }
 
+function normalizeRateForDisplay(
+  value: number | null | undefined,
+): number | null | undefined {
+  if (value == null) {
+    return value;
+  }
+
+  return Math.abs(value) <= 1 ? value * 100 : value;
+}
+
 function formatMetricRate(value: number | null | undefined): string {
-  const formattedValue = formatMetricNumber(value);
+  const formattedValue = formatMetricNumber(normalizeRateForDisplay(value));
   return formattedValue === "-" ? formattedValue : `${formattedValue}%`;
 }
 
@@ -133,6 +144,13 @@ function getTrendPointValue(
   point: GeoTaskDashboardMentionTrendSeries["points"][number],
 ): number {
   return point.mention_rate ?? point.mention_count;
+}
+
+function formatTrendValue(
+  value: number | null | undefined,
+  usesMentionRate: boolean,
+): string {
+  return usesMentionRate ? formatMetricRate(value) : formatMetricNumber(value);
 }
 
 function formatRatio(value: number | null | undefined): string {
@@ -508,6 +526,11 @@ function getVisibleAxisLabelIndexes(length: number, maxLabels = 6) {
 }
 
 function TrendSection({ trend }: { trend: GeoTaskDashboardMentionTrend }) {
+  const [hoverState, setHoverState] = useState<{
+    index: number;
+    svgX: number;
+    svgY: number;
+  } | null>(null);
   const usesMentionRate = trend.series.some((item) =>
     item.points.some((point) => point.mention_rate != null),
   );
@@ -521,6 +544,8 @@ function TrendSection({ trend }: { trend: GeoTaskDashboardMentionTrend }) {
     1,
   );
   const axisLabels = trend.x_axis;
+  const usableWidth = CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
+  const usableHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
   const visibleAxisLabelIndexes = getVisibleAxisLabelIndexes(axisLabels.length);
   const yAxisTicks = Array.from({ length: 5 }, (_, index) => {
     const ratio = 1 - index / 4;
@@ -535,6 +560,70 @@ function TrendSection({ trend }: { trend: GeoTaskDashboardMentionTrend }) {
       y,
     };
   });
+  const hoveredDate =
+    hoverState == null ? null : (axisLabels[hoverState.index] ?? null);
+  const hoveredSeriesValues =
+    hoveredDate == null
+      ? []
+      : trend.series.map((series, index) => {
+          const point =
+            series.points[hoverState.index] != null &&
+            series.points[hoverState.index].date === hoveredDate
+              ? series.points[hoverState.index]
+              : (series.points.find((item) => item.date === hoveredDate) ??
+                series.points[hoverState.index]);
+
+          return {
+            brand_name: series.brand_name,
+            color: getSeriesColor(series, index),
+            value: point == null ? null : getTrendPointValue(point),
+            point,
+          };
+        });
+  const tooltipStyle =
+    hoverState == null
+      ? null
+      : {
+          position: "absolute" as const,
+          left: `${(hoverState.svgX / CHART_WIDTH) * 100}%`,
+          top: `${(hoverState.svgY / CHART_HEIGHT) * 100}%`,
+          transform:
+            hoverState.svgX > CHART_WIDTH * 0.72
+              ? "translate(calc(-100% - 12px), calc(-100% - 12px))"
+              : "translate(12px, calc(-100% - 12px))",
+          minWidth: 180,
+          padding: "10px 12px",
+          borderRadius: 12,
+          background: "white",
+          border: "1px solid var(--mb-color-border)",
+          boxShadow: "0 10px 28px var(--mb-color-shadow)",
+          pointerEvents: "none" as const,
+          zIndex: 1,
+        };
+
+  const handleTrendMouseMove = (
+    event: ReactMouseEvent<SVGRectElement, MouseEvent>,
+  ) => {
+    const plotRect = event.currentTarget.getBoundingClientRect();
+    const relativeX = event.clientX - plotRect.left;
+    const relativeY = event.clientY - plotRect.top;
+    const clampedX = Math.min(Math.max(relativeX, 0), plotRect.width);
+    const clampedY = Math.min(Math.max(relativeY, 0), plotRect.height);
+    const nextIndex = Math.round(
+      (clampedX / Math.max(plotRect.width, 1)) *
+        Math.max(axisLabels.length - 1, 0),
+    );
+
+    setHoverState({
+      index: nextIndex,
+      svgX:
+        CHART_PADDING.left +
+        (nextIndex / Math.max(axisLabels.length - 1, 1)) * usableWidth,
+      svgY:
+        CHART_PADDING.top +
+        (clampedY / Math.max(plotRect.height, 1)) * usableHeight,
+    });
+  };
 
   return (
     <div style={pageSectionStyle}>
@@ -549,98 +638,203 @@ function TrendSection({ trend }: { trend: GeoTaskDashboardMentionTrend }) {
         </div>
       ) : (
         <>
-          <svg
-            viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-            style={{ width: "100%", height: "auto", display: "block" }}
-          >
-            {yAxisTicks.map((tick) => (
-              <g key={tick.key}>
-                <line
-                  x1={CHART_PADDING.left}
-                  y1={tick.y}
-                  x2={CHART_WIDTH - CHART_PADDING.right}
-                  y2={tick.y}
-                  stroke="var(--mb-color-border)"
-                  strokeWidth="1"
-                  strokeDasharray="4 4"
-                />
-                <text
-                  x={CHART_PADDING.left - 8}
-                  y={tick.y + 4}
-                  textAnchor="end"
-                  fill="var(--mb-color-text-medium)"
-                  fontSize="13"
-                >
-                  {usesMentionRate
-                    ? formatMetricRate(tick.value)
-                    : formatMetricNumber(tick.value)}
-                </text>
-              </g>
-            ))}
-            <line
-              x1={CHART_PADDING.left}
-              y1={CHART_HEIGHT - CHART_PADDING.bottom}
-              x2={CHART_WIDTH - CHART_PADDING.right}
-              y2={CHART_HEIGHT - CHART_PADDING.bottom}
-              stroke="var(--mb-color-border)"
-              strokeWidth="1"
-            />
-            {axisLabels.map((label, index) => {
-              const usableWidth =
-                CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
-              const x =
-                CHART_PADDING.left +
-                (index / Math.max(axisLabels.length - 1, 1)) * usableWidth;
-
-              if (!visibleAxisLabelIndexes.has(index)) {
-                return null;
-              }
-
-              return (
-                <text
-                  key={label}
-                  x={x}
-                  y={CHART_HEIGHT - 8}
-                  textAnchor="middle"
-                  fill="var(--mb-color-text-medium)"
-                  fontSize="13"
-                >
-                  {dayjs(label).format("M/D")}
-                </text>
-              );
-            })}
-            {trend.series.map((series, index) => {
-              const color = getSeriesColor(series, index);
-              const path = buildTrendPath(series.points, maxValue);
-              const lastPoint = series.points[series.points.length - 1];
-              const usableWidth =
-                CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
-              const usableHeight =
-                CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
-              const lastX = CHART_PADDING.left + usableWidth;
-              const lastY =
-                CHART_PADDING.top +
-                usableHeight -
-                (getTrendPointValue(lastPoint) / Math.max(maxValue, 1)) *
-                  usableHeight;
-
-              return (
-                <g key={series.brand_name}>
-                  <path
-                    d={path}
-                    fill="none"
-                    stroke={color}
-                    strokeWidth="3"
-                    strokeDasharray={
-                      series.brand_role === "product_brand" ? undefined : "7 6"
-                    }
-                    strokeLinecap="round"
+          <div style={{ position: "relative" }}>
+            <svg
+              viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+              style={{ width: "100%", height: "auto", display: "block" }}
+            >
+              {yAxisTicks.map((tick) => (
+                <g key={tick.key}>
+                  <line
+                    x1={CHART_PADDING.left}
+                    y1={tick.y}
+                    x2={CHART_WIDTH - CHART_PADDING.right}
+                    y2={tick.y}
+                    stroke="var(--mb-color-border)"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
                   />
-                  <circle cx={lastX} cy={lastY} r="5" fill={color} />
+                  <text
+                    x={CHART_PADDING.left - 8}
+                    y={tick.y + 4}
+                    textAnchor="end"
+                    fill="var(--mb-color-text-medium)"
+                    fontSize="13"
+                  >
+                    {formatTrendValue(tick.value, usesMentionRate)}
+                  </text>
                 </g>
-              );
-            })}
-          </svg>
+              ))}
+              <line
+                x1={CHART_PADDING.left}
+                y1={CHART_HEIGHT - CHART_PADDING.bottom}
+                x2={CHART_WIDTH - CHART_PADDING.right}
+                y2={CHART_HEIGHT - CHART_PADDING.bottom}
+                stroke="var(--mb-color-border)"
+                strokeWidth="1"
+              />
+              {axisLabels.map((label, index) => {
+                const x =
+                  CHART_PADDING.left +
+                  (index / Math.max(axisLabels.length - 1, 1)) * usableWidth;
+
+                if (!visibleAxisLabelIndexes.has(index)) {
+                  return null;
+                }
+
+                return (
+                  <text
+                    key={label}
+                    x={x}
+                    y={CHART_HEIGHT - 8}
+                    textAnchor="middle"
+                    fill="var(--mb-color-text-medium)"
+                    fontSize="13"
+                  >
+                    {dayjs(label).format("M/D")}
+                  </text>
+                );
+              })}
+              {hoverState != null ? (
+                <g>
+                  <line
+                    x1={CHART_PADDING.left}
+                    y1={hoverState.svgY}
+                    x2={CHART_WIDTH - CHART_PADDING.right}
+                    y2={hoverState.svgY}
+                    stroke="var(--mb-color-text-light)"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
+                  />
+                  <line
+                    x1={hoverState.svgX}
+                    y1={CHART_PADDING.top}
+                    x2={hoverState.svgX}
+                    y2={CHART_HEIGHT - CHART_PADDING.bottom}
+                    stroke="var(--mb-color-text-light)"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
+                  />
+                </g>
+              ) : null}
+              {trend.series.map((series, index) => {
+                const color = getSeriesColor(series, index);
+                const path = buildTrendPath(series.points, maxValue);
+                const lastPoint = series.points[series.points.length - 1];
+                const lastX = CHART_PADDING.left + usableWidth;
+                const lastY =
+                  CHART_PADDING.top +
+                  usableHeight -
+                  (getTrendPointValue(lastPoint) / Math.max(maxValue, 1)) *
+                    usableHeight;
+                const hoveredPoint =
+                  hoverState == null
+                    ? null
+                    : series.points[hoverState.index] != null &&
+                        series.points[hoverState.index].date === hoveredDate
+                      ? series.points[hoverState.index]
+                      : (series.points.find(
+                          (point) => point.date === hoveredDate,
+                        ) ?? null);
+                const hoveredPointY =
+                  hoveredPoint == null
+                    ? null
+                    : CHART_PADDING.top +
+                      usableHeight -
+                      (getTrendPointValue(hoveredPoint) /
+                        Math.max(maxValue, 1)) *
+                        usableHeight;
+
+                return (
+                  <g key={series.brand_name}>
+                    <path
+                      d={path}
+                      fill="none"
+                      stroke={color}
+                      strokeWidth="3"
+                      strokeDasharray={
+                        series.brand_role === "product_brand"
+                          ? undefined
+                          : "7 6"
+                      }
+                      strokeLinecap="round"
+                    />
+                    {hoverState != null && hoveredPointY != null ? (
+                      <>
+                        <circle
+                          cx={hoverState.svgX}
+                          cy={hoveredPointY}
+                          r="6"
+                          fill="white"
+                          stroke={color}
+                          strokeWidth="2"
+                        />
+                        <circle
+                          cx={hoverState.svgX}
+                          cy={hoveredPointY}
+                          r="3"
+                          fill={color}
+                        />
+                      </>
+                    ) : (
+                      <circle cx={lastX} cy={lastY} r="5" fill={color} />
+                    )}
+                  </g>
+                );
+              })}
+              <rect
+                x={CHART_PADDING.left}
+                y={CHART_PADDING.top}
+                width={usableWidth}
+                height={usableHeight}
+                fill="transparent"
+                style={{ cursor: "crosshair" }}
+                onMouseMove={handleTrendMouseMove}
+                onMouseLeave={() => setHoverState(null)}
+              />
+            </svg>
+            {hoverState != null &&
+            hoveredDate != null &&
+            tooltipStyle != null ? (
+              <div style={tooltipStyle}>
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>
+                  {dayjs(hoveredDate).format("YYYY/MM/DD")}
+                </div>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 6 }}
+                >
+                  {hoveredSeriesValues.map((item) => (
+                    <div
+                      key={item.brand_name}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <span style={{ color: item.color, fontSize: 18 }}>
+                          •
+                        </span>
+                        <span>{item.brand_name}</span>
+                      </div>
+                      <span style={{ fontWeight: 700 }}>
+                        {formatTrendValue(item.value, usesMentionRate)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
           <Flex mt="md" gap="md" wrap="wrap">
             {trend.series.map((series, index) => {
               const color = getSeriesColor(series, index);
