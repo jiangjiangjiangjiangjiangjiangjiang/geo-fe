@@ -1,4 +1,4 @@
-import type { ChangeEvent, DragEvent } from "react";
+import type { ChangeEvent, DragEvent, ReactNode } from "react";
 import { useCallback, useRef, useState } from "react";
 import { gettext, t } from "ttag";
 import * as XLSX from "xlsx";
@@ -28,7 +28,7 @@ type RowResult<TResponse> =
   | { status: "success"; resultText: string; response: TResponse }
   | { status: "error"; message: string };
 
-type ExportRowContext<TResponse> = {
+export type ExcelBatchRowContext<TResponse> = {
   rowIndex: number;
   noteTitle: string;
   noteContent: string;
@@ -38,8 +38,13 @@ type ExportRowContext<TResponse> = {
 };
 
 export type ExcelBatchExportRowBuilder<TResponse> = (
-  exportContext: ExportRowContext<TResponse>,
+  exportContext: ExcelBatchRowContext<TResponse>,
 ) => Record<string, string | number>;
+
+export interface ExcelBatchTableColumn<TResponse> {
+  label: string;
+  getValue: (rowContext: ExcelBatchRowContext<TResponse>) => ReactNode;
+}
 
 interface ExcelBatchAnalysisPageProps<TRequest, TResponse> {
   pageTitle: string;
@@ -55,6 +60,7 @@ interface ExcelBatchAnalysisPageProps<TRequest, TResponse> {
   getResultText: (response: TResponse) => string;
   validateParsedRows?: (rows: RowRecord[]) => string | null;
   buildExportRow?: ExcelBatchExportRowBuilder<TResponse>;
+  additionalTableColumns?: ExcelBatchTableColumn<TResponse>[];
 }
 
 const EXCEL_ACCEPT =
@@ -132,6 +138,7 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
   getResultText,
   validateParsedRows,
   buildExportRow,
+  additionalTableColumns,
 }: ExcelBatchAnalysisPageProps<TRequest, TResponse>) {
   usePageTitle(pageTitle);
 
@@ -317,27 +324,27 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
     const exportRows = rows.map((row, index) => {
       const { noteTitle, noteContent } = buildRequestFromRow(row);
       const result = results[index] ?? { status: "idle" as const };
-      const defaultStatusText = getStatusText(result);
+      const rowContext: ExcelBatchRowContext<TResponse> = {
+        rowIndex: index,
+        noteTitle,
+        noteContent,
+        row,
+        result,
+        defaultStatusText: getStatusText(result),
+      };
 
       const defaultExportRow = {
         [t`Row number`]: index + 1,
         [t`Note title`]: noteTitle || "",
         [t`Note content`]: noteContent || "",
-        [resultColumnLabel]: defaultStatusText,
+        [resultColumnLabel]: rowContext.defaultStatusText,
       };
 
       if (!buildExportRow) {
         return defaultExportRow;
       }
 
-      return buildExportRow({
-        rowIndex: index,
-        noteTitle,
-        noteContent,
-        row,
-        result,
-        defaultStatusText,
-      });
+      return buildExportRow(rowContext);
     });
 
     const headerOrder = Array.from(
@@ -510,6 +517,11 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
                     <th className={S.th}>{t`Note title`}</th>
                     <th className={S.th}>{t`Note content`}</th>
                     <th className={S.th}>{resultColumnLabel}</th>
+                    {additionalTableColumns?.map((column) => (
+                      <th className={S.th} key={column.label}>
+                        {column.label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -518,6 +530,14 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
                       status: "idle" as const,
                     };
                     const { noteTitle, noteContent } = buildRequestFromRow(row);
+                    const rowContext: ExcelBatchRowContext<TResponse> = {
+                      rowIndex: index,
+                      noteTitle,
+                      noteContent,
+                      row,
+                      result,
+                      defaultStatusText: getStatusText(result),
+                    };
 
                     return (
                       <tr
@@ -528,6 +548,11 @@ export function ExcelBatchAnalysisPage<TRequest, TResponse>({
                         <td className={S.td}>{noteTitle || "—"}</td>
                         <td className={S.td}>{noteContent || "—"}</td>
                         <td className={S.td}>{renderResult(result)}</td>
+                        {additionalTableColumns?.map((column) => (
+                          <td className={S.td} key={column.label}>
+                            {column.getValue(rowContext)}
+                          </td>
+                        ))}
                       </tr>
                     );
                   })}

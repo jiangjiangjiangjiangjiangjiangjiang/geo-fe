@@ -1,6 +1,8 @@
 import {
   buildBrandSentimentExportColumns,
   formatBrandSentimentResult,
+  formatBrandSossValue,
+  getBrandSossValue,
 } from "./result-format";
 
 describe("formatBrandSentimentResult", () => {
@@ -77,5 +79,57 @@ describe("formatBrandSentimentResult", () => {
       情感1: "正面",
       证据1: "",
     });
+  });
+});
+
+describe("getBrandSossValue", () => {
+  it("should return one when exactly one brand is recognized", () => {
+    expect(
+      getBrandSossValue({
+        brands: [{ brand_name: "花王", sentiment: "正面" }],
+      }),
+    ).toBe(1);
+  });
+
+  it("should calculate soss from unique recognized brand count", () => {
+    expect(
+      getBrandSossValue({
+        brands: [
+          { brand_name: "高露洁", sentiment: "负面" },
+          { brand_name: "滴露", sentiment: "正面" },
+          { brand_name: "高露洁", sentiment: "正面" },
+        ],
+      }),
+    ).toBe(0.5);
+  });
+
+  it("should return null when there are no valid brands", () => {
+    expect(
+      getBrandSossValue({
+        brands: [{ sentiment: "正面" }, {}],
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("formatBrandSossValue", () => {
+  it("should format repeating decimals for display", () => {
+    expect(
+      formatBrandSossValue({
+        brands: [
+          { brand_name: "高露洁", sentiment: "负面" },
+          { brand_name: "滴露", sentiment: "正面" },
+          { brand_name: "花王", sentiment: "中性" },
+        ],
+      }),
+    ).toBe("0.3333");
+  });
+
+  it("should return an empty string when soss cannot be calculated", () => {
+    expect(
+      formatBrandSossValue({
+        brands: [{}],
+      }),
+    ).toBe("");
   });
 });

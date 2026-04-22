@@ -7,16 +7,20 @@ import {
 import {
   ExcelBatchAnalysisPage,
   type ExcelBatchExportRowBuilder,
+  type ExcelBatchTableColumn,
 } from "metabase/seo/shared/ExcelBatchAnalysisPage";
 import {
   buildBrandSentimentExportColumns,
   formatBrandSentimentResult,
+  formatBrandSossValue,
+  getBrandSossValue,
 } from "metabase/seo/shared/result-format";
 
 type RowRecord = Record<string, unknown>;
 
 const TITLE_KEYS = ["笔记标题", "note_title", "标题"];
 const CONTENT_KEYS = ["笔记内容", "note_content", "内容"];
+const SOSS_COLUMN_LABEL = "SOSS赋值";
 
 function getCellValueByKeys(row: RowRecord, candidateKeys: string[]): string {
   for (const key of candidateKeys) {
@@ -66,11 +70,26 @@ const buildBrandSentimentExportRow: ExcelBatchExportRowBuilder<
     [t`Note title`]: noteTitle || "",
     [t`Note content`]: noteContent || "",
     [t`品牌情感结果`]: defaultStatusText,
+    [SOSS_COLUMN_LABEL]:
+      result.status === "success"
+        ? (getBrandSossValue(result.response) ?? "")
+        : "",
     ...(result.status === "success"
       ? buildBrandSentimentExportColumns(result.response)
       : {}),
   };
 };
+
+const additionalTableColumns: ExcelBatchTableColumn<BrandSentimentRecognitionResponse>[] =
+  [
+    {
+      label: SOSS_COLUMN_LABEL,
+      getValue: ({ result }) =>
+        result.status === "success"
+          ? formatBrandSossValue(result.response) || "—"
+          : "—",
+    },
+  ];
 
 export function NoteBrandSentimentRecognitionPage() {
   const [getBrandSentimentRecognition] =
@@ -90,6 +109,7 @@ export function NoteBrandSentimentRecognitionPage() {
       validateParsedRows={validateBrandSentimentRows}
       analyzeRow={(request) => getBrandSentimentRecognition(request).unwrap()}
       buildExportRow={buildBrandSentimentExportRow}
+      additionalTableColumns={additionalTableColumns}
       getResultText={(response) =>
         formatBrandSentimentResult(response) || t`未识别到品牌`
       }

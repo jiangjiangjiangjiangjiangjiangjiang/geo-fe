@@ -70,6 +70,42 @@ function normalizeBrandSentimentItem(item: unknown): {
   };
 }
 
+function getRecognizedBrandNames(
+  response: BrandSentimentRecognitionResponse,
+): string[] {
+  const brandNames = response.brands
+    .map((item) => normalizeBrandSentimentItem(item).brand)
+    .filter(Boolean);
+
+  return Array.from(new Set(brandNames));
+}
+
+export function getBrandSossValue(
+  response: BrandSentimentRecognitionResponse,
+): number | null {
+  const recognizedBrandCount = getRecognizedBrandNames(response).length;
+  if (recognizedBrandCount === 0) {
+    return null;
+  }
+
+  return 1 / recognizedBrandCount;
+}
+
+export function formatBrandSossValue(
+  response: BrandSentimentRecognitionResponse,
+): string {
+  const sossValue = getBrandSossValue(response);
+  if (sossValue == null) {
+    return "";
+  }
+
+  if (Number.isInteger(sossValue)) {
+    return String(sossValue);
+  }
+
+  return sossValue.toFixed(4).replace(/\.?0+$/, "");
+}
+
 export function buildBrandSentimentExportColumns(
   response: BrandSentimentRecognitionResponse,
 ): Record<string, string> {
