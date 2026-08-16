@@ -1,13 +1,20 @@
 import cx from "classnames";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
+import * as XLSX from "xlsx";
 
 import type { SourceItem } from "metabase/api/geo-task";
 import { useGetGeoTaskSourcesQuery } from "metabase/api/geo-task";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { useToast } from "metabase/common/hooks";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import {
+  buildSourceExportFileName,
+  buildSourceExportMerges,
+  buildSourceExportRows,
+} from "metabase/geo-task/lib/sourceExport";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useRouter } from "metabase/router";
 import { Box, Button, Flex, Icon, Title } from "metabase/ui";
@@ -16,6 +23,8 @@ interface GroupedSourceItem {
   result_id: number;
   sources: SourceItem[];
 }
+
+const EMPTY_SOURCES: SourceItem[] = [];
 
 function groupSourcesByResultId(items: SourceItem[]): GroupedSourceItem[] {
   const groupedItems = new Map<number, GroupedSourceItem>();
@@ -79,8 +88,9 @@ export const GeoTaskSourcesPage = () => {
   const { params, router } = useRouter();
   const taskId = params?.taskId ?? "";
   const [page, setPage] = useState(1);
-  const pageSize = 20;
+  const pageSize = 100;
   const [batchId, setBatchId] = useState<number | undefined>(undefined);
+  const [sendToast] = useToast();
 
   const { data, isLoading, error } = useGetGeoTaskSourcesQuery(
     {
@@ -98,12 +108,31 @@ export const GeoTaskSourcesPage = () => {
     router.replace({ pathname: "/geo-task", query: {} });
   };
 
-  const items = data?.items ?? [];
+  const items = data?.items ?? EMPTY_SOURCES;
   const groupedItems = groupSourcesByResultId(items);
   const total = data?.total ?? 0;
   const totalPages = data?.total_pages ?? 0;
   const shouldShowPagination =
     total > 0 && (totalPages > 1 || total > pageSize);
+  const exportRows = useMemo(() => buildSourceExportRows(items), [items]);
+  const exportMerges = useMemo(() => buildSourceExportMerges(items), [items]);
+  const canExport = exportRows.length > 0 && !isLoading;
+
+  const handleExportExcel = useCallback(() => {
+    if (!canExport) {
+      return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    worksheet["!merges"] = exportMerges;
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, t`Task sources`);
+    XLSX.writeFile(workbook, buildSourceExportFileName(taskId, batchId, page));
+    sendToast({
+      message: t`Current page data exported successfully`,
+      icon: "check",
+    });
+  }, [batchId, canExport, exportMerges, exportRows, page, sendToast, taskId]);
 
   return (
     <Box p="xl" style={{ maxWidth: "100%", width: "100%", margin: 0 }}>
@@ -118,6 +147,14 @@ export const GeoTaskSourcesPage = () => {
           </Button>
           <Title order={1}>{t`Task sources`}</Title>
         </Flex>
+        <Button
+          leftSection={<Icon name="download" />}
+          variant="default"
+          onClick={handleExportExcel}
+          disabled={!canExport}
+        >
+          {t`Download Excel`}
+        </Button>
       </Flex>
 
       {taskId && (
