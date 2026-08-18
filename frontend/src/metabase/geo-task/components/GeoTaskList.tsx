@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import type { GeoTask } from "metabase/api/geo-task";
@@ -15,9 +15,15 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { formatScheduleCronForDisplay } from "metabase/geo-task/lib/schedule";
 import { useRouter } from "metabase/router";
-import { Button, Flex } from "metabase/ui";
+import { Button, Checkbox, Flex, Icon } from "metabase/ui";
 
+import { GeoTaskExportModal } from "./GeoTaskExportModal";
 import { ScheduleConfigModal } from "./ScheduleConfigModal";
+
+function toShanghaiBoundaryIso(dateValue: string, addDays: number): string {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + addDays, -8)).toISOString();
+}
 
 const listStyle = {
   margin: 0,
@@ -138,10 +144,28 @@ export const GeoTaskList = ({
 }: GeoTaskListProps) => {
   const [page, setPage] = useState(1);
   const pageSize = 20;
+  const [draftStartDate, setDraftStartDate] = useState("");
+  const [draftEndDate, setDraftEndDate] = useState("");
+  const [executionDateRange, setExecutionDateRange] = useState({
+    startDate: "",
+    endDate: "",
+  });
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const executedFrom = executionDateRange.startDate
+    ? toShanghaiBoundaryIso(executionDateRange.startDate, 0)
+    : undefined;
+  const executedTo = executionDateRange.endDate
+    ? toShanghaiBoundaryIso(executionDateRange.endDate, 1)
+    : undefined;
 
   const { data, isLoading, error, refetch } = useListGeoTasksQuery({
     page,
     page_size: pageSize,
+    ...(executedFrom && { executed_from: executedFrom }),
+    ...(executedTo && { executed_to: executedTo }),
   });
   const [executeGeoTask, { isLoading: isExecuting }] =
     useExecuteGeoTaskMutation();
@@ -157,6 +181,12 @@ export const GeoTaskList = ({
   const viewSummaryLabel = (isZh ? "汇总结果" : null) ?? t`Summary`;
   const viewSourcesLabel = (isZh ? "查看信源" : null) ?? t`View sources`;
   const viewDashboardLabel = (isZh ? "监测看板" : null) ?? t`Dashboard`;
+  const executionStartLabel =
+    (isZh ? "执行开始日期" : null) ?? t`Execution start date`;
+  const executionEndLabel =
+    (isZh ? "执行结束日期" : null) ?? t`Execution end date`;
+  const filterLabel = (isZh ? "查询" : null) ?? t`Filter`;
+  const bulkExportLabel = (isZh ? "批量导出" : null) ?? t`Bulk export`;
 
   // 表头与按钮中文兜底
   const headerTaskId = (isZh ? "任务ID" : null) ?? t`Task ID`;
@@ -183,6 +213,15 @@ export const GeoTaskList = ({
   const labelNo = (isZh ? "否" : null) ?? t`No`;
 
   const tasks = data?.items || [];
+  const selectedTaskIdList = useMemo(
+    () => Array.from(selectedTaskIds),
+    [selectedTaskIds],
+  );
+  const selectedVisibleTaskCount = tasks.filter((task) =>
+    selectedTaskIds.has(task.id),
+  ).length;
+  const allVisibleTasksSelected =
+    tasks.length > 0 && selectedVisibleTaskCount === tasks.length;
   const total = data?.total ?? 0;
   const totalPages = data?.total_pages ?? 0;
   // Show pagination if we have total info and either multiple pages or more items than page size
@@ -253,9 +292,90 @@ export const GeoTaskList = ({
     router.push(`/geo-task/${task.id}/dashboard`);
   };
 
+  const toggleTask = (taskId: string) => {
+    setSelectedTaskIds((current) => {
+      const next = new Set(current);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  };
+
+  const toggleVisibleTasks = () => {
+    setSelectedTaskIds((current) => {
+      const next = new Set(current);
+      tasks.forEach((task) => {
+        if (allVisibleTasksSelected) {
+          next.delete(task.id);
+        } else {
+          next.add(task.id);
+        }
+      });
+      return next;
+    });
+  };
+
+  const applyExecutionDateRange = () => {
+    if (draftStartDate && draftEndDate && draftStartDate > draftEndDate) {
+      sendToast({
+        message: t`Please select a valid execution time range`,
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+      });
+      return;
+    }
+    setExecutionDateRange({
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+    });
+    setSelectedTaskIds(new Set());
+    setPage(1);
+  };
+
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
       <>
+        <Flex
+          justify="space-between"
+          align="flex-end"
+          gap="md"
+          wrap="wrap"
+          mb="md"
+        >
+          <Flex gap="sm" align="flex-end" wrap="wrap">
+            <label>
+              <span className={CS.textSecondary}>{executionStartLabel}</span>
+              <input
+                type="date"
+                value={draftStartDate}
+                onChange={(event) => setDraftStartDate(event.target.value)}
+                style={{ display: "block", height: 40, marginTop: 4 }}
+              />
+            </label>
+            <label>
+              <span className={CS.textSecondary}>{executionEndLabel}</span>
+              <input
+                type="date"
+                value={draftEndDate}
+                onChange={(event) => setDraftEndDate(event.target.value)}
+                style={{ display: "block", height: 40, marginTop: 4 }}
+              />
+            </label>
+            <Button variant="outline" onClick={applyExecutionDateRange}>
+              {filterLabel}
+            </Button>
+          </Flex>
+          <Button
+            leftSection={<Icon name="download" />}
+            onClick={() => setIsExportModalOpen(true)}
+            disabled={selectedTaskIds.size === 0}
+          >
+            {bulkExportLabel} ({selectedTaskIds.size})
+          </Button>
+        </Flex>
         <div className={cx(CS.bordered, CS.rounded, CS.full)}>
           {tasks.length === 0 ? (
             <div className={cx(CS.flex, CS.layoutCentered, CS.p4)}>
@@ -265,6 +385,16 @@ export const GeoTaskList = ({
             <table className={AdminS.ContentTable}>
               <thead>
                 <tr>
+                  <th>
+                    <Checkbox
+                      checked={allVisibleTasksSelected}
+                      indeterminate={
+                        selectedVisibleTaskCount > 0 && !allVisibleTasksSelected
+                      }
+                      onChange={toggleVisibleTasks}
+                      aria-label={t`Select current page`}
+                    />
+                  </th>
                   <th>{headerTaskId}</th>
                   <th>{headerTaskName}</th>
                   <th>{headerTaskBrand}</th>
@@ -283,6 +413,13 @@ export const GeoTaskList = ({
               <tbody>
                 {tasks.map((task) => (
                   <tr key={task.id}>
+                    <td>
+                      <Checkbox
+                        checked={selectedTaskIds.has(task.id)}
+                        onChange={() => toggleTask(task.id)}
+                        aria-label={t`Select task`}
+                      />
+                    </td>
                     <td>{task.id}</td>
                     <td>{task.task_name ?? "-"}</td>
                     <td>{task.product_brand ?? "-"}</td>
@@ -430,6 +567,15 @@ export const GeoTaskList = ({
             void refetch();
           }}
           onClose={() => setScheduleTask(null)}
+        />
+        <GeoTaskExportModal
+          opened={isExportModalOpen}
+          taskIds={selectedTaskIdList}
+          executedFrom={executedFrom}
+          executedTo={executedTo}
+          startDate={executionDateRange.startDate}
+          endDate={executionDateRange.endDate}
+          onClose={() => setIsExportModalOpen(false)}
         />
       </>
     </LoadingAndErrorWrapper>

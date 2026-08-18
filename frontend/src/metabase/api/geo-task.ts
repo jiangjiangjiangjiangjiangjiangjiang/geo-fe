@@ -46,6 +46,8 @@ export interface ListGeoTasksRequest {
   enabled?: boolean;
   platform_id?: string;
   usr_company_id?: string;
+  executed_from?: string;
+  executed_to?: string;
 }
 
 export interface ListGeoTasksResponse {
@@ -183,6 +185,58 @@ export interface GeoResultListResponse {
   page: number;
   page_size: number;
   total_pages: number;
+}
+
+export interface GeoTaskExportPreviewRequest {
+  task_ids: string[];
+  executed_from?: string;
+  executed_to?: string;
+}
+
+export interface GeoTaskExportPreviewResponse {
+  items: GeoTaskExportItem[];
+  total: number;
+  max_limit: number;
+}
+
+export interface GeoTaskExportRequest {
+  result_ids: string[];
+}
+
+export interface GeoTaskExportSource {
+  title: string | null;
+  url: string | null;
+}
+
+export interface GeoTaskExportItem {
+  id: string;
+  geo_task_id: string;
+  task_name: string;
+  product_brand: string | null;
+  query: string;
+  engine: string;
+  ai_mode: string | null;
+  batch_id: number | null;
+  collected_at: string;
+  processed_content: string | null;
+  query_result: unknown;
+  brand_mentioned: boolean | null;
+  brand_rank: number | null;
+  is_first_recommendation: boolean | null;
+  in_top3: boolean | null;
+  visibility_score: number;
+  sentiment: number;
+  accuracy: number;
+  selling_point_mentions: Record<string, unknown> | null;
+  product_keyword_mentions: Record<string, unknown> | null;
+  competitor_analyses: Array<Record<string, unknown>>;
+  sources: GeoTaskExportSource[];
+}
+
+export interface GeoTaskExportResponse {
+  items: GeoTaskExportItem[];
+  total: number;
+  max_limit: number;
 }
 
 /** Single source item from GET api/geo-task/{task_id}/sources */
@@ -519,6 +573,26 @@ export const geoTaskApi = Api.injectEndpoints({
         params: { page, page_size, ...(batch_id != null && { batch_id }) },
       }),
     }),
+    previewGeoTaskExport: builder.mutation<
+      GeoTaskExportPreviewResponse,
+      GeoTaskExportPreviewRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/geo-task/results/export-preview",
+        body,
+      }),
+    }),
+    getGeoTaskExportData: builder.mutation<
+      GeoTaskExportResponse,
+      GeoTaskExportRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/geo-task/results/export-data",
+        body,
+      }),
+    }),
     getGeoTaskSources: builder.query<SourceListResponse, GeoTaskSourcesRequest>(
       {
         query: ({ taskId, page = 1, page_size = 20, batch_id }) => ({
@@ -603,6 +677,8 @@ export const {
   useGetTaskScheduleQuery,
   useSetTaskScheduleMutation,
   useGetGeoTaskResultsQuery,
+  usePreviewGeoTaskExportMutation,
+  useGetGeoTaskExportDataMutation,
   useGetGeoTaskSourcesQuery,
   useGetGeoTaskSummaryFormQuery,
   useGetGeoTaskDashboardSummaryQuery,
